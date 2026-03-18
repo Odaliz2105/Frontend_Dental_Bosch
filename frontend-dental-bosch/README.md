@@ -1,16 +1,126 @@
-# React + Vite
+# 🦷 Dental Bosch - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web moderna para la gestión de consultorio dental, construida con React 19, Vite y TailwindCSS.
 
-Currently, two official plugins are available:
+## 🚀 Características
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🔐 Autenticación Completa
+- ✅ Registro de usuarios con validación
+- ✅ Login con manejo de errores específicos
+- ✅ Confirmación de cuenta por email
+- ✅ Recuperación de contraseña con token
+- ✅ Restablecimiento de contraseña seguro
 
-## React Compiler
+### 👥 Gestión de Usuarios
+- ✅ Perfil de usuario con edición
+- ✅ Subida de fotos de perfil
+- ✅ Actualización de datos en tiempo real
+- ✅ Dashboard según rol (paciente/doctor/admin)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🎨 UI/UX Moderna
+- ✅ Diseño responsive con TailwindCSS
+- ✅ Animaciones con Framer Motion
+- ✅ Componentes reutilizables
+- ✅ Navegación intuitiva con sidebar
 
-## Expanding the ESLint configuration
+### 🔧 Características Técnicas
+- ✅ React 19 con hooks modernos
+- ✅ React Router para navegación
+- ✅ Axios para comunicación con backend
+- ✅ Context API para manejo de estado
+- ✅ ESLint para código limpio
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🛠️ Tecnologías
+
+- **Frontend**: React 19, Vite, TailwindCSS
+- **Animaciones**: Framer Motion
+- **Iconos**: Lucide React
+- **HTTP**: Axios
+- **Routing**: React Router DOM
+- **Estado**: Context API
+
+## 📦 Instalación
+
+```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Construir para producción
+npm run build
+
+# Verificar código con ESLint
+npm run lint
+```
+
+## 🔗 Backend
+
+El frontend se conecta con el backend de Dental Bosch:
+- **URL**: `https://backend-dental-bosch-vr8o.onrender.com`
+- **API**: RESTful con autenticación JWT
+- **Base de datos**: MongoDB
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── components/          # Componentes reutilizables
+│   ├── Button.jsx      # Botón estilizado
+│   ├── Input.jsx       # Input con validación
+│   ├── Logo.jsx        # Logo de la app
+│   ├── Navbar.jsx      # Barra de navegación
+│   ├── Sidebar.jsx     # Sidebar de navegación
+│   └── ProtectedRoute.jsx # Rutas protegidas
+├── context/            # Contexto de autenticación
+│   └── AuthContext.jsx # Manejo de estado de auth
+├── pages/              # Páginas de la aplicación
+│   ├── LandingPage.jsx         # Página principal
+│   ├── LoginPage.jsx           # Login
+│   ├── RegisterPage.jsx        # Registro
+│   ├── DashboardPage.jsx       # Dashboard principal
+│   ├── ProfilePage.jsx         # Perfil de usuario
+│   ├── ForgotPasswordPage.jsx  # Recuperar contraseña
+│   ├── ResetPasswordPage.jsx   # Restablecer contraseña
+│   ├── ConfirmAccountPage.jsx  # Confirmar cuenta
+│   └── TestAPI.jsx             # Tests de API
+├── services/           # Servicios de API
+│   └── api.js         # Configuración de Axios
+└── App.jsx            # Componente principal con rutas
+```
+
+## 🔐 Flujo de Autenticación
+
+1. **Registro**: Usuario se registra → Email de confirmación
+2. **Confirmación**: Usuario confirma email → Cuenta activada
+3. **Login**: Usuario inicia sesión → Token JWT
+4. **Dashboard**: Acceso según rol → Funcionalidades específicas
+5. **Perfil**: Edición de datos y foto
+6. **Recuperación**: Olvido de contraseña → Email con token
+
+## 🎯 Endpoints Principales
+
+- `POST /api/auth/registro` - Registro
+- `POST /api/auth/login` - Login
+- `GET /api/auth/confirmar/:token` - Confirmar cuenta
+- `POST /api/auth/recuperar-password` - Recuperar contraseña
+- `POST /api/auth/restablecer-password/:token` - Restablecer contraseña
+- `GET /api/auth/perfil` - Ver perfil
+- `PUT /api/pacientes/perfil/paciente` - Actualizar perfil
+
+## 🚀 Despliegue
+
+El proyecto está configurado para despliegue en Vercel con `vercel.json`.
+
+## 📄 Licencia
+
+ 2024 Dental Bosch - Todos los derechos reservados
+
+## 🤝 Contribuciones
+
+¡Contribuciones son bienvenidas! Por favor sigue las guías de código y haz un pull request.
+
+---
+
+**Desarrollado con ❤️ para Dental Bosch**

@@ -131,6 +131,19 @@ const TestAPI = () => {
             </div>
           </div>
 
+          {/* Pacientes */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">👥 Gestión de Pacientes</h2>
+            <div className="space-y-3">
+              <Button onClick={() => testEndpoint('/api/pacientes/', 'GET')} loading={loading} className="w-full">
+                📋 Test Obtener Todos los Pacientes
+              </Button>
+              <Button onClick={() => testEndpoint('/api/pacientes/69b190f68138b8fcf2785014', 'GET')} loading={loading} className="w-full">
+                🔍 Test Obtener Paciente por ID
+              </Button>
+            </div>
+          </div>
+
           {/* Recuperación */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">🔧 Recuperación de Password</h2>

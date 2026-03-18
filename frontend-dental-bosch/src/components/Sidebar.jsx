@@ -99,9 +99,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 z-50 h-full bg-white shadow-xl transition-all duration-300 transform
+        fixed top-0 left-0 z-40 h-full bg-white shadow-xl transition-all duration-300 transform
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        w-72 lg:translate-x-0 lg:static lg:z-0
+        w-72 lg:translate-x-0 lg:static lg:z-0 lg:block
       `}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">

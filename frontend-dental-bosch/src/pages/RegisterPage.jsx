@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Mail, Lock, User, Phone, Calendar } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Phone, Calendar, FileText, Stethoscope } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Button from '../components/Button'
@@ -17,7 +17,9 @@ const RegisterPage = () => {
     confirmPassword: '',
     telefono: '',
     fechaNacimiento: '',
-    rol: 'paciente'
+    rol: 'paciente',
+    cedula: '', // Campo para doctores
+    especialidad: '' // Campo para doctores
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -52,6 +54,12 @@ const RegisterPage = () => {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres'
     }
     
+    if (!formData.apellido.trim()) {
+      newErrors.apellido = 'El apellido es requerido'
+    } else if (formData.apellido.trim().length < 3) {
+      newErrors.apellido = 'El apellido debe tener al menos 3 caracteres'
+    }
+    
     if (!formData.email) {
       newErrors.email = 'El correo electrónico es requerido'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -76,6 +84,19 @@ const RegisterPage = () => {
       newErrors.telefono = 'El teléfono debe tener 10 dígitos'
     }
     
+    // Validaciones específicas para doctores
+    if (formData.rol === 'doctor') {
+      if (!formData.cedula.trim()) {
+        newErrors.cedula = 'La cédula es requerida para doctores'
+      } else if (!/^\d{10}$/.test(formData.cedula.replace(/\D/g, ''))) {
+        newErrors.cedula = 'La cédula debe tener 10 dígitos'
+      }
+      
+      if (!formData.especialidad.trim()) {
+        newErrors.especialidad = 'La especialidad es requerida para doctores'
+      }
+    }
+    
     return newErrors
   }
 
@@ -89,16 +110,29 @@ const RegisterPage = () => {
     }
     
     const { confirmPassword, ...registerData } = formData
+    
+    console.log('📤 Enviando datos de registro:', registerData)
+    
     const result = await register(registerData)
     
     if (result.success) {
+      console.log('✅ Registro exitoso:', result.data)
+      
+      // Mensaje específico según el rol
+      const successMessage = result.mensaje || 
+        (formData.rol === 'doctor' 
+          ? 'Registro exitoso. Tu cuenta será revisada por un administrador. Revisa tu email para confirmar tu cuenta.'
+          : 'Registro exitoso. Por favor, inicia sesión.'
+        )
+      
       navigate('/login', { 
         state: { 
-          message: result.data?.mensaje || 'Registro exitoso. Por favor, confirma tu correo electrónico.',
+          message: successMessage,
           type: 'success'
         } 
       })
     } else {
+      console.error('❌ Error en registro:', result.error)
       setErrors({ general: result.error })
     }
   }
@@ -197,6 +231,49 @@ const RegisterPage = () => {
                 icon={Calendar}
               />
 
+              {/* Campos específicos para doctores */}
+              {formData.rol === 'doctor' && (
+                <>
+                  <Input
+                    label="Cédula profesional"
+                    type="text"
+                    name="cedula"
+                    value={formData.cedula}
+                    onChange={handleChange}
+                    placeholder="0117054321"
+                    error={errors.cedula}
+                    icon={FileText}
+                    required={formData.rol === 'doctor'}
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Especialidad
+                    </label>
+                    <select
+                      name="especialidad"
+                      value={formData.especialidad}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      required={formData.rol === 'doctor'}
+                    >
+                      <option value="">Selecciona una especialidad</option>
+                      <option value="Ortodoncia">Ortodoncia</option>
+                      <option value="Odontopediatría">Odontopediatría</option>
+                      <option value="Endodoncia">Endodoncia</option>
+                      <option value="Periodoncia">Periodoncia</option>
+                      <option value="Cirugía Oral">Cirugía Oral</option>
+                      <option value="Prótesis Dental">Prótesis Dental</option>
+                      <option value="Odontología General">Odontología General</option>
+                      <option value="Cosmética Dental">Cosmética Dental</option>
+                    </select>
+                    {errors.especialidad && (
+                      <p className="mt-1 text-sm text-red-600">{errors.especialidad}</p>
+                    )}
+                  </div>
+                </>
+              )}
+
               <div className="relative">
                 <Input
                   label="Contraseña"
@@ -249,10 +326,24 @@ const RegisterPage = () => {
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
-                  <option value="paciente">Paciente</option>
-                  <option value="doctor">Doctor</option>
+                  <option value="paciente">👤 Paciente</option>
+                  <option value="doctor">🩺 Doctor</option>
                 </select>
               </div>
+
+              {/* Información adicional según rol */}
+              {formData.rol === 'doctor' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <Stethoscope className="w-5 h-5 text-blue-600 mr-2" />
+                    <h3 className="text-sm font-medium text-blue-900">Información para Doctores</h3>
+                  </div>
+                  <p className="text-xs text-blue-700">
+                    Tu cuenta será revisada por un administrador antes de ser aprobada. 
+                    Recibirás un correo electrónico cuando tu cuenta sea activada.
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center">
                 <input

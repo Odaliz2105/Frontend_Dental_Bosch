@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Button from '../components/Button'
 import Logo from '../components/Logo'
+import api from '../services/api'
 
 const ConfirmAccountPage = () => {
   const [status, setStatus] = useState('loading') // loading, success, error
@@ -15,8 +16,10 @@ const ConfirmAccountPage = () => {
 
   const confirmAccount = async () => {
     try {
-      const response = await fetch(`https://backend-dental-bosch-vr8o.onrender.com/api/auth/confirmar/${token}`)
-      const data = await response.json()
+      console.log('🔄 Confirmando cuenta con token:', token)
+      
+      const response = await api.get(`/api/auth/confirmar/${token}`)
+      const data = response.data
       
       console.log('📥 Respuesta del backend:', data)
       console.log('📊 Status de la respuesta:', response.status)
