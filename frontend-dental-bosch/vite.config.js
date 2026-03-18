@@ -13,5 +13,18 @@ export default defineConfig({
         secure: true
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['framer-motion', 'lucide-react']
+        }
+      }
+    }
   }
 })
