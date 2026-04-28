@@ -21,10 +21,8 @@ const DashboardPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user } = useAuth()
   
-  const isDoctor = user?.rol === 'doctor' || user?.rol === 'administrador'
-
-  // Datos de ejemplo
-  const stats = isDoctor ? [
+  // Datos de ejemplo para doctor/admin
+  const stats = [
     {
       title: 'Pacientes Activos',
       value: '156',
@@ -53,46 +51,13 @@ const DashboardPage = () => {
       icon: TrendingUp,
       color: 'from-orange-500 to-orange-600'
     }
-  ] : [
-    {
-      title: 'Próxima Cita',
-      value: 'Mañana',
-      change: '10:00 AM',
-      icon: Calendar,
-      color: 'from-blue-500 to-blue-600'
-    },
-    {
-      title: 'Tratamiento',
-      value: 'Ortodoncia',
-      change: '60% completo',
-      icon: Heart,
-      color: 'from-purple-500 to-purple-600'
-    },
-    {
-      title: 'Última Visita',
-      value: 'Hace 2 semanas',
-      change: 'Revisión',
-      icon: Clock,
-      color: 'from-green-500 to-green-600'
-    },
-    {
-      title: 'Progreso',
-      value: 'Bien',
-      change: 'Mejorando',
-      icon: Activity,
-      color: 'from-orange-500 to-orange-600'
-    }
   ]
 
-  const recentAppointments = isDoctor ? [
+  const recentAppointments = [
     { id: 1, patient: 'María García', time: '09:00 AM', treatment: 'Limpieza', status: 'confirmada' },
     { id: 2, patient: 'Juan Pérez', time: '10:30 AM', treatment: 'Revisión', status: 'confirmada' },
     { id: 3, patient: 'Ana López', time: '11:00 AM', treatment: 'Brackets', status: 'pendiente' },
     { id: 4, patient: 'Carlos Ruiz', time: '02:00 PM', treatment: 'Consulta', status: 'confirmada' }
-  ] : [
-    { id: 1, date: '15 Mar 2024', time: '10:00 AM', doctor: 'Dr. Smith', treatment: 'Revisión' },
-    { id: 2, date: '22 Mar 2024', time: '11:30 AM', doctor: 'Dra. Johnson', treatment: 'Ajuste' },
-    { id: 3, date: '05 Abr 2024', time: '09:00 AM', doctor: 'Dr. Smith', treatment: 'Limpieza' }
   ]
 
   const containerVariants = {
@@ -136,7 +101,7 @@ const DashboardPage = () => {
                 </button>
                 
                 <h1 className="ml-4 text-2xl font-bold text-dark">
-                  {isDoctor ? 'Panel Doctor' : 'Mi Panel'}
+                  Panel Doctor
                 </h1>
               </div>
               
@@ -172,10 +137,7 @@ const DashboardPage = () => {
               ¡Bienvenido de vuelta, {user?.nombre}!
             </h2>
             <p className="text-gray-600">
-              {isDoctor 
-                ? 'Aquí está el resumen de tu clínica hoy' 
-                : 'Aquí está el estado de tu tratamiento dental'
-              }
+              Aquí está el resumen de tu clínica hoy
             </p>
           </motion.div>
 
@@ -228,7 +190,7 @@ const DashboardPage = () => {
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-dark">
-                    {isDoctor ? 'Citas de Hoy' : 'Mis Próximas Citas'}
+                    Citas de Hoy
                   </h3>
                   <Button variant="ghost" size="small">
                     Ver todas
@@ -247,17 +209,17 @@ const DashboardPage = () => {
                         </div>
                         <div>
                           <p className="font-medium text-dark">
-                            {isDoctor ? appointment.patient : appointment.doctor}
+                            {appointment.patient}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {isDoctor ? appointment.treatment : `${appointment.date} - ${appointment.time}`}
+                            {appointment.treatment}
                           </p>
                         </div>
                       </div>
                       
                       <div className="text-right">
                         <p className="text-sm text-gray-600">
-                          {isDoctor ? appointment.time : appointment.treatment}
+                          {appointment.time}
                         </p>
                         <span className={`inline-block px-2 py-1 text-xs rounded-full ${
                           appointment.status === 'confirmada' 
@@ -288,16 +250,11 @@ const DashboardPage = () => {
               
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-4">
-                  {isDoctor ? [
+                  {[
                     { icon: Users, label: 'Nuevo Paciente', color: 'bg-blue-500' },
                     { icon: Calendar, label: 'Agendar Cita', color: 'bg-green-500' },
                     { icon: FileText, label: 'Historial', color: 'bg-purple-500' },
                     { icon: TrendingUp, label: 'Reportes', color: 'bg-orange-500' }
-                  ] : [
-                    { icon: Calendar, label: 'Agendar Cita', color: 'bg-blue-500' },
-                    { icon: Heart, label: 'Mi Tratamiento', color: 'bg-purple-500' },
-                    { icon: Activity, label: 'Odontograma', color: 'bg-green-500' },
-                    { icon: FileText, label: 'Historial', color: 'bg-orange-500' }
                   ].map((action, index) => {
                     const Icon = action.icon
                     return (

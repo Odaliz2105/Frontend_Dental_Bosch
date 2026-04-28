@@ -2,7 +2,6 @@ import React from 'react'
 import { useAuth } from '../context/AuthContext'
 import AdminDashboardPage from '../pages/AdminDashboardPage'
 import DoctorDashboardPage from '../pages/DoctorDashboardPage'
-import PatientDashboardPage from '../pages/PatientDashboardPage'
 
 const RoleBasedDashboard = () => {
   const { user } = useAuth()
@@ -20,10 +19,6 @@ const RoleBasedDashboard = () => {
     
     if (user?.rol === 'doctor') {
       return <DoctorDashboardPage />
-    }
-    
-    if (user?.rol === 'paciente') {
-      return <PatientDashboardPage />
     }
     
     return <div className="min-h-screen bg-light-bg flex items-center justify-center">

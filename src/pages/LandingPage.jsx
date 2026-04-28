@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Heart, 
   Smile, 
@@ -12,14 +12,113 @@ import {
   Mail,
   MapPin,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Smartphone,
+  X,
+  PlayCircle,
+  Apple
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Button from '../components/Button'
 import Logo from '../components/Logo'
 
+const AppModal = ({ showAppModal, setShowAppModal }) => (
+    <AnimatePresence>
+      {showAppModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAppModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Botón cerrar */}
+            <button
+              onClick={() => setShowAppModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Ícono */}
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
+                <Smartphone size={40} className="text-white" />
+              </div>
+            </div>
+
+            {/* Contenido */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                ¡Descarga nuestra App!
+              </h2>
+              <p className="text-gray-600 leading-relaxed">
+                Para agendar citas, registrarte como paciente y hacer seguimiento 
+                de tu tratamiento, descarga nuestra aplicación móvil.
+              </p>
+            </div>
+
+            {/* Beneficios */}
+            <div className="space-y-3 mb-8">
+              {[
+                'Agenda citas desde tu celular',
+                'Consulta tu historial clínico',
+                'Recibe recordatorios de citas',
+                'Seguimiento de tu tratamiento'
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle size={12} className="text-primary" />
+                  </div>
+                  <span className="text-sm text-gray-700">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Botones de descarga */}
+            <div className="space-y-3">
+              <button
+                className="w-full flex items-center justify-center gap-3 bg-black text-white py-3.5 rounded-xl hover:bg-gray-900 transition-colors font-medium"
+                onClick={() => {
+                  // TODO: agregar link real de App Store
+                  alert('Próximamente en App Store')
+                }}
+              >
+                <Apple size={20} />
+                Descargar en App Store
+              </button>
+              <button
+                className="w-full flex items-center justify-center gap-3 bg-primary text-white py-3.5 rounded-xl hover:bg-primary/90 transition-colors font-medium"
+                onClick={() => {
+                  // TODO: agregar link real de Google Play
+                  alert('Próximamente en Google Play')
+                }}
+              >
+                <PlayCircle size={20} />
+                Descargar en Google Play
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-gray-400 mt-4">
+              Disponible para iOS y Android
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+)
+
 const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showAppModal, setShowAppModal] = useState(false)
 
   const services = [
     {
@@ -81,9 +180,11 @@ const LandingPage = () => {
     }
   }
 
+  
   return (
     <div className="min-h-screen bg-light-bg">
       <Navbar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+      <AppModal showAppModal={showAppModal} setShowAppModal={setShowAppModal} />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-white to-secondary/10">
@@ -135,6 +236,7 @@ const LandingPage = () => {
                 className="group"
                 icon={Calendar}
                 iconPosition="right"
+                onClick={() => setShowAppModal(true)}
               >
                 Agendar cita
               </Button>
@@ -229,6 +331,7 @@ const LandingPage = () => {
               size="large" 
               className="bg-white text-primary hover:bg-gray-50 border-white"
               icon={Calendar}
+              onClick={() => setShowAppModal(true)}
             >
               Agendar consulta gratuita
             </Button>

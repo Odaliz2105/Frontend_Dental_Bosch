@@ -74,6 +74,7 @@ const TestAPI = () => {
   const testVerificarToken = () => testEndpoint('/api/auth/verificar-token')
   const testPerfil = () => testEndpoint('/api/auth/perfil')
   const testActualizarPerfil = () => testEndpoint('/api/auth/perfil', 'PUT', { nombre: 'Juan Actualizado' })
+  const testActualizarPassword = () => testEndpoint('/api/auth/actualizar-password', 'PUT', { password_actual: '123456', password_nuevo: 'nueva123' })
 
   // Pruebas de recuperación
   const testRecuperarPassword = () => {
@@ -90,6 +91,22 @@ const TestAPI = () => {
     }
   }
 
+  // Pruebas de doctores
+  const testGetAllDoctors = () => testEndpoint('/api/doctores', 'GET')
+  const testGetDoctorById = () => testEndpoint('/api/doctores/507f1f77bcf86cd799439011', 'GET') // ID de ejemplo
+  const testGetDoctorProfile = () => testEndpoint('/api/doctores/perfil/doctor', 'GET')
+  const testUpdateDoctorProfile = () => testEndpoint('/api/doctores/perfil/doctor', 'PUT', { especialidad: 'Cardiología' })
+  const testGetPendingDoctors = () => testEndpoint('/api/doctores/pendientes', 'GET')
+  const testGetApprovedDoctors = () => testEndpoint('/api/doctores/aprobados/lista', 'GET')
+  const testApproveDoctor = () => testEndpoint('/api/doctores/507f1f77bcf86cd799439011/estado', 'PUT', { estado: 'aprobado' })
+  const testDeleteDoctor = () => testEndpoint('/api/doctores/507f1f77bcf86cd799439011', 'DELETE')
+
+  // Pruebas de pacientes
+  const testGetAllPatients = () => testEndpoint('/api/pacientes', 'GET')
+  const testGetPatientById = () => testEndpoint('/api/pacientes/69b190f68138b8fcf2785014', 'GET')
+  const testGetPatientProfile = () => testEndpoint('/api/pacientes/perfil/paciente', 'GET')
+  const testUpdatePatientProfile = () => testEndpoint('/api/pacientes/perfil/paciente', 'PUT', { telefono: '0998765432' })
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} user={user} />
@@ -101,7 +118,7 @@ const TestAPI = () => {
           <p className="text-gray-600 mt-2">Backend Dental Bosch - Todos los Endpoints</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Autenticación */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">🔐 Autenticación</h2>
@@ -114,6 +131,9 @@ const TestAPI = () => {
               </Button>
               <Button onClick={testVerificarToken} loading={loading} className="w-full">
                 ✅ Test Verificar Token
+              </Button>
+              <Button onClick={testActualizarPassword} loading={loading} className="w-full">
+                🔐 Test Actualizar Password
               </Button>
             </div>
           </div>
@@ -131,15 +151,59 @@ const TestAPI = () => {
             </div>
           </div>
 
+          {/* Doctores */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">🩺 Gestión de Doctores</h2>
+            <div className="space-y-3">
+              <Button onClick={testGetAllDoctors} loading={loading} className="w-full">
+                📋 Test Todos los Doctores
+              </Button>
+              <Button onClick={testGetDoctorById} loading={loading} className="w-full">
+                🔍 Test Doctor por ID
+              </Button>
+              <Button onClick={testGetDoctorProfile} loading={loading} className="w-full">
+                � Test Perfil Doctor
+              </Button>
+              <Button onClick={testUpdateDoctorProfile} loading={loading} className="w-full">
+                ✏️ Test Actualizar Perfil Doctor
+              </Button>
+            </div>
+          </div>
+
+          {/* Doctores Admin */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">🛡️ Doctores (Admin)</h2>
+            <div className="space-y-3">
+              <Button onClick={testGetPendingDoctors} loading={loading} className="w-full">
+                ⏳ Test Doctores Pendientes
+              </Button>
+              <Button onClick={testGetApprovedDoctors} loading={loading} className="w-full">
+                ✅ Test Doctores Aprobados
+              </Button>
+              <Button onClick={testApproveDoctor} loading={loading} className="w-full">
+                🔄 Test Aprobar Doctor
+              </Button>
+              <Button onClick={testDeleteDoctor} loading={loading} className="w-full">
+                🗑️ Test Eliminar Doctor
+              </Button>
+            </div>
+          </div>
+
           {/* Pacientes */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">👥 Gestión de Pacientes</h2>
             <div className="space-y-3">
-              <Button onClick={() => testEndpoint('/api/pacientes/', 'GET')} loading={loading} className="w-full">
-                📋 Test Obtener Todos los Pacientes
+              <Button onClick={testGetAllPatients} loading={loading} className="w-full">
+                📋 Test Todos los Pacientes
               </Button>
-              <Button onClick={() => testEndpoint('/api/pacientes/69b190f68138b8fcf2785014', 'GET')} loading={loading} className="w-full">
-                🔍 Test Obtener Paciente por ID
+              <Button onClick={testGetPatientById} loading={loading} className="w-full">
+                🔍 Test Paciente por ID
+              </Button>
+              <Button onClick={testGetPatientProfile} loading={loading} className="w-full">
+                👤 Test Perfil Paciente
+              </Button>
+              <Button onClick={testUpdatePatientProfile} loading={loading} className="w-full">
+                ✏️ Test Actualizar Perfil Paciente
               </Button>
             </div>
           </div>

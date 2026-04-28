@@ -1,50 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Edit2, 
-  Save, 
-  X,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Briefcase,
+  Save,
   Camera,
-  Shield,
-  Clock,
-  Upload,
-  Settings
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/Sidebar'
+import api from '../services/api'
 import Button from '../components/Button'
-import Input from '../components/Input'
-import Logo from '../components/Logo'
-import { useNavigate } from 'react-router-dom'
+import Sidebar from '../components/Sidebar'
 
 const ProfilePage = () => {
-  const { user, updateUser } = useAuth()
-  const navigate = useNavigate()
+  const { user, updateUser, refreshUserData, syncDoctorData } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState({})
   const [success, setSuccess] = useState('')
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const fileInputRef = useRef(null)
-  
-  // Detectar si es administrador
-  const isAdmin = user?.rol === 'admin' || 
-                 user?.rol === 'administrador' || 
-                 user?.email === 'admin@dentalbosch.com'
+  const [error, setError] = useState('')
   
   const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    telefono: '',
-    cedula: '',
-    email: ''
+    nombre: user?.nombre || '',
+    apellido: user?.apellido || '',
+    telefono: user?.telefono || '',
+    email: user?.email || '',
+    especialidad: user?.especialidad || ''
   })
+
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (user) {
@@ -52,26 +41,11 @@ const ProfilePage = () => {
         nombre: user.nombre || '',
         apellido: user.apellido || '',
         telefono: user.telefono || '',
-        cedula: user.cedula || '',
-        email: user.email || ''
+        email: user.email || '',
+        especialidad: user.especialidad || ''
       })
     }
   }, [user])
-
-  // Actualizar datos del usuario - eliminamos esta función redundante
-  // const updateUserProfile = (userData) => {
-  //   updateUser(userData)
-  // }
-
-  // Auto-ocultar mensaje de éxito
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess('')
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [success])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -87,24 +61,10 @@ const ProfilePage = () => {
         [name]: ''
       }))
     }
-  }
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setSelectedFile(file)
-      
-      // Crear preview
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
+    
+    // Limpiar mensajes
+    setSuccess('')
+    setError('')
   }
 
   const validateForm = () => {
@@ -120,8 +80,15 @@ const ProfilePage = () => {
     
     if (!formData.telefono.trim()) {
       newErrors.telefono = 'El teléfono es requerido'
-    } else if (!/^[0-9]{9,10}$/.test(formData.telefono.replace(/\s/g, ''))) {
-      newErrors.telefono = 'El teléfono no es válido'
+    } else if (!/^\d{10}$/.test(formData.telefono.replace(/\s/g, ''))) {
+      newErrors.telefono = 'El teléfono debe tener 10 dígitos'
+    }
+    
+    // Validación específica para doctor
+    if (user?.rol === 'doctor') {
+      if (!formData.especialidad.trim()) {
+        newErrors.especialidad = 'La especialidad es requerida'
+      }
     }
     
     setErrors(newErrors)
@@ -136,337 +103,234 @@ const ProfilePage = () => {
     }
     
     setLoading(true)
-    setErrors({})
+    setError('')
     setSuccess('')
     
     try {
-      // Si hay archivo seleccionado, intentar subirlo
-      // Si no, actualizar solo los datos de texto
       let result
       
-      if (selectedFile) {
-        // Intentar actualizar con imagen
-        result = await updateUser(formData, selectedFile)
-        
-        // Si falla por error de imagen, intentar solo con datos
-        if (!result.success && result.error?.includes('imagen')) {
-          console.log('⚠️ Error con imagen, intentando solo datos de texto...')
-          result = await updateUser(formData, null)
+      // Para doctores, usar la función de sincronización especial
+      if (user?.rol === 'doctor') {
+        const doctorData = {
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          telefono: formData.telefono,
+          especialidad: formData.especialidad
         }
+        result = await syncDoctorData(doctorData)
       } else {
-        // Actualizar solo datos de texto
-        result = await updateUser(formData, null)
+        const response = await api.put('/api/auth/perfil', formData)
+        result = { success: response.data.success }
+        
+        if (response.data.usuario) {
+          updateUser(response.data.usuario)
+        }
       }
       
       if (result.success) {
-        setSuccess('✅ Perfil actualizado exitosamente')
-        setIsEditing(false)
-        setSelectedFile(null)
-        setPreviewUrl('')
+        setSuccess('Perfil actualizado exitosamente')
+        
+        // Limpiar mensajes después de 3 segundos
+        setTimeout(() => {
+          setSuccess('')
+        }, 3000)
       } else {
-        setErrors({ general: result.error })
+        setError(result.error || 'Error al actualizar el perfil')
       }
-    } catch (error) {
-      console.log('❌ Error de conexión:', error)
-      setErrors({ general: 'Error de conexión. Por favor, intenta nuevamente.' })
+    } catch (err) {
+      console.error('Error al actualizar perfil:', err)
+      setError(err.response?.data?.mensaje || 'Error al actualizar el perfil')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCancel = () => {
-    setIsEditing(false)
-    // Resetear formulario a los datos originales
-    if (user) {
-      setFormData({
-        nombre: user.nombre || '',
-        apellido: user.apellido || '',
-        telefono: user.telefono || '',
-        cedula: user.cedula || '',
-        email: user.email || ''
-      })
+  const renderField = (name, label, type = 'text', required = false, options = []) => {
+    const value = formData[name] || ''
+    const hasError = errors[name]
+    
+    // Solo mostrar campos permitidos por rol
+    if (user?.rol === 'doctor') {
+      if (!['nombre', 'apellido', 'telefono', 'especialidad'].includes(name)) return null
     }
-    setErrors({})
-    setSuccess('')
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    
+    // El email es de solo lectura
+    if (name === 'email') {
+      return (
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
-        />
-      </div>
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-2"
+        >
+          <label className="block text-sm font-medium text-gray-700">
+            {label}
+          </label>
+          <input
+            type={type}
+            name={name}
+            value={value}
+            readOnly
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+          />
+        </motion.div>
+      )
+    }
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-2"
+      >
+        <label className="block text-sm font-medium text-gray-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        
+        {type === 'select' ? (
+          <select
+            name={name}
+            value={value}
+            onChange={handleChange}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+              hasError ? 'border-red-500' : 'border-gray-300'
+            }`}
+          >
+            <option value="">Seleccionar...</option>
+            {options.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={handleChange}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+              hasError ? 'border-red-500' : 'border-gray-300'
+            }`}
+          />
+        )}
+        
+        <AnimatePresence>
+          {hasError && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-red-500 text-sm flex items-center gap-1"
+            >
+              <XCircle size={14} />
+              {errors[name]}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </motion.div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
-        <Sidebar isOpen={false} setIsOpen={() => {}} />
-      </div>
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 h-full w-72 bg-white">
-            <Sidebar isOpen={true} setIsOpen={setSidebarOpen} />
-          </div>
-        </div>
-      )}
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                <h1 className="ml-4 text-2xl font-bold text-gray-900">Mi Perfil</h1>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                {isAdmin && (
-                  <Button
-                    onClick={() => navigate('/admin/dashboard')}
-                    icon={Settings}
-                    variant="outline"
-                  >
-                    Panel Admin
-                  </Button>
-                )}
-                {isEditing ? (
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      onClick={handleCancel}
-                      icon={X}
-                      variant="outline"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleSubmit}
-                      icon={Save}
-                      loading={loading}
-                      disabled={loading}
-                    >
-                      {loading ? 'Guardando...' : 'Guardar'}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => setIsEditing(true)}
-                    icon={Edit2}
-                    variant="outline"
-                  >
-                    Editar Perfil
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-8 overflow-auto">
+      <div className="flex-1 lg:ml-64">
+        <div className="p-3 lg:p-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-4xl mx-auto"
+            className="max-w-5xl mx-auto"
           >
-            {/* Profile Card */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              {/* Profile Header */}
-              <div className="bg-gradient-to-r from-primary to-primary/80 p-8">
-                <div className="flex items-center space-x-6">
-                  <div className="relative">
-                    <img
-                      src={previewUrl || user.foto || 'https://res.cloudinary.com/dpk1tw1us/image/upload/v1/avatars/default-avatar.jpg'}
-                      alt="Profile"
-                      className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
-                    />
-                    {isEditing && (
-                      <button
-                        onClick={handleUploadClick}
-                        className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <Upload size={16} className="text-gray-600" />
-                      </button>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
+            <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
+                  <p className="text-gray-600 mt-1">
+                    {user?.rol === 'doctor' ? 'Información del doctor' : 
+                     'Información del administrador'}
+                  </p>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">Rol</p>
+                    <p className="font-medium capitalize">{user?.rol}</p>
                   </div>
                   
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white">
-                      {user.nombre} {user.apellido}
-                    </h2>
-                    <p className="text-white/80 mt-1">{user.email}</p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        isAdmin 
-                          ? 'bg-red-100 text-red-800' 
-                          : user.rol === 'doctor' 
-                          ? 'bg-purple-100 text-purple-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {isAdmin ? 'Administrador' : user.rol === 'doctor' ? 'Doctor' : 'Paciente'}
-                      </span>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        user.confirmado 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {user.confirmado ? 'Activo' : 'Pendiente'}
-                      </span>
-                    </div>
+                  <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-white text-xl font-bold">
+                    {user?.nombre?.charAt(0)?.toUpperCase()}
                   </div>
                 </div>
               </div>
 
-              {/* Profile Form */}
-              <div className="p-8">
-                {/* Success Message */}
+              <AnimatePresence>
                 {success && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6"
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3"
                   >
-                    {success}
+                    <CheckCircle className="text-green-500" size={20} />
+                    <p className="text-green-700">{success}</p>
                   </motion.div>
                 )}
-
-                {/* Error Message */}
-                {errors.general && (
+                
+                {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6"
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3"
                   >
-                    {errors.general}
+                    <XCircle className="text-red-500" size={20} />
+                    <p className="text-red-700">{error}</p>
                   </motion.div>
                 )}
+              </AnimatePresence>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Input
-                      label="Nombre"
-                      type="text"
-                      name="nombre"
-                      value={formData.nombre}
-                      onChange={handleChange}
-                      placeholder="Tu nombre"
-                      error={errors.nombre}
-                      icon={User}
-                      disabled={!isEditing}
-                      required
-                    />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderField('nombre', 'Nombre', 'text', true)}
+                  {renderField('apellido', 'Apellido', 'text', true)}
+                  {renderField('email', 'Email', 'email')}
+                  {renderField('telefono', 'Teléfono', 'tel', true)}
+                </div>
 
-                    <Input
-                      label="Apellido"
-                      type="text"
-                      name="apellido"
-                      value={formData.apellido}
-                      onChange={handleChange}
-                      placeholder="Tu apellido"
-                      error={errors.apellido}
-                      icon={User}
-                      disabled={!isEditing}
-                      required
-                    />
-
-                    <Input
-                      label="Email"
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="tu@email.com"
-                      icon={Mail}
-                      disabled={true} // Email no se puede editar
-                      required
-                    />
-
-                    <Input
-                      label="Teléfono"
-                      type="tel"
-                      name="telefono"
-                      value={formData.telefono}
-                      onChange={handleChange}
-                      placeholder="0991234567"
-                      error={errors.telefono}
-                      icon={Phone}
-                      disabled={!isEditing}
-                      required
-                    />
-
-                    <Input
-                      label="Cédula"
-                      type="text"
-                      name="cedula"
-                      value={formData.cedula}
-                      onChange={handleChange}
-                      placeholder="1720106663"
-                      icon={Shield}
-                      disabled={true} // Cédula no se puede editar
-                      required
-                    />
-
-                    <Input
-                      label="Fecha de Registro"
-                      type="text"
-                      value={new Date(user.createdAt).toLocaleDateString('es-ES')}
-                      icon={Calendar}
-                      disabled={true}
-                    />
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Información de Cuenta</h3>
+                {/* Campo específico para doctor */}
+                {user?.rol === 'doctor' && (
+                  <div className="space-y-4">
+                    <h3 className="text-base font-semibold text-gray-900 pt-3 border-t">Información Profesional</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-3">
-                        <Clock size={20} className="text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-500">Última actualización</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {new Date(user.updatedAt).toLocaleDateString('es-ES')}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        <Shield size={20} className="text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-500">Estado de cuenta</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {user.activo ? 'Activa' : 'Inactiva'}
-                          </p>
-                        </div>
-                      </div>
+                      {renderField('especialidad', 'Especialidad', 'text', true)}
                     </div>
                   </div>
-                </form>
-              </div>
+                )}
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="min-w-[180px]"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin mr-2" size={18} />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2" size={18} />
+                        Guardar Cambios
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </div>
           </motion.div>
         </div>

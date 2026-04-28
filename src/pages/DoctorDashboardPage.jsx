@@ -2,34 +2,36 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Users, 
-  Calendar, 
-  FileText, 
-  Clock, 
-  Package,
+  Calendar,
+  Clock,
+  FileText,
   Activity,
-  User,
+  TrendingUp,
   Settings,
-  LogOut
+  Package,
+  User
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import Button from '../components/Button'
 import Logo from '../components/Logo'
+import DoctorProfile from '../components/DoctorProfile'
 
 const DoctorDashboardPage = () => {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
 
   return (
     <div className="min-h-screen bg-light-bg">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
       <div className="lg:pl-64">
-        <div className="p-6">
+        <div className="p-4">
           {/* Header */}
-          <div className="mb-8">
-            <Logo size="medium" className="mb-4" />
-            <h1 className="text-3xl font-bold text-dark mb-2">
+          <div className="mb-6">
+            <Logo size="medium" className="mb-3" />
+            <h1 className="text-2xl font-bold text-dark mb-2">
               Panel de Doctor
             </h1>
             <p className="text-gray-600">
@@ -38,11 +40,11 @@ const DoctorDashboardPage = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+              className="bg-white rounded-xl shadow-sm p-4 border border-gray-200"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -59,7 +61,7 @@ const DoctorDashboardPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+              className="bg-white rounded-xl shadow-sm p-4 border border-gray-200"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -76,7 +78,7 @@ const DoctorDashboardPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+              className="bg-white rounded-xl shadow-sm p-4 border border-gray-200"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -93,7 +95,7 @@ const DoctorDashboardPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+              className="bg-white rounded-xl shadow-sm p-4 border border-gray-200"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -112,15 +114,15 @@ const DoctorDashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6"
           >
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-dark flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-dark flex items-center gap-2">
                 <Settings className="w-5 h-5 text-purple-600" />
                 Acciones del Doctor
               </h2>
             </div>
-            <div className="p-6">
+            <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Button
                   onClick={() => {/* TODO: Gestionar pacientes */}}
@@ -175,24 +177,44 @@ const DoctorDashboardPage = () => {
                   <Package className="w-4 h-4 mr-2" />
                   Inventario
                 </Button>
+                
+                <Button
+                  onClick={() => setShowProfile(!showProfile)}
+                  className="w-full justify-start"
+                  variant={showProfile ? "default" : "outline"}
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Mi Perfil
+                </Button>
               </div>
             </div>
           </motion.div>
+
+          {/* Doctor Profile - Solo mostrar cuando showProfile es true */}
+          {showProfile && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <DoctorProfile />
+            </motion.div>
+          )}
 
           {/* Recent Activity */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
             className="bg-white rounded-xl shadow-sm border border-gray-200"
           >
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-dark flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-dark flex items-center gap-2">
                 <Activity className="w-5 h-5 text-blue-600" />
                 Actividad Reciente
               </h2>
             </div>
-            <div className="p-6">
+            <div className="p-4">
               <div className="text-center text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                 <p>No hay actividad reciente</p>

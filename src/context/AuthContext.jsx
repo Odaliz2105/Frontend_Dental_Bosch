@@ -1,358 +1,465 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import api from '../services/api'
+import React, { createContext, useContext, useState, useEffect } from "react";
+import api from "../services/api";
 
-const AuthContext = createContext()
+const AuthContext = createContext();
 
+/* eslint-disable */
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
-}
+  return context;
+};
+/* eslint-enable */
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [token, setToken] = useState(localStorage.getItem('token'))
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem("token"));
 
   useEffect(() => {
-    let isMounted = true
-    
     if (token) {
       // Verificar token y obtener datos del usuario
-      api.get('/api/auth/verificar-token')
-        .then(response => {
-          if (isMounted) {
-            setUser(response.data.usuario)
+      api
+        .get("/api/auth/verificar-token")
+        .then((response) => {
+          const usuario = response.data.usuario;
+
+          // Verificación adicional para doctores pendientes
+          if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
+            // Si es doctor pendiente, cerrar sesión
+            localStorage.removeItem("token");
+            setToken(null);
+            setUser(null);
+            return;
           }
+
+          setUser(usuario);
         })
         .catch(() => {
-          if (isMounted) {
-            localStorage.removeItem('token')
-            setToken(null)
-            setUser(null)
-          }
+          localStorage.removeItem("token");
+          setToken(null);
+          setUser(null);
         })
         .finally(() => {
-          if (isMounted) {
-            setLoading(false)
-          }
-        })
+          setTimeout(() => setLoading(false), 0);
+        });
     } else {
-      if (isMounted) {
-        setLoading(false)
-      }
+      setTimeout(() => setLoading(false), 0);
     }
-    
-    return () => {
-      isMounted = false
-    }
-  }, [token])
+  }, [token]);
 
-  const login = async (email, password) => {
-    setLoading(true)
-    
-    console.log('Intentando login con:', { email, password: '***' })
-    
+  const login = async (credentials) => {
     try {
-      const response = await api.post('/api/auth/login', {
-        email,
-        password
-      })
-      
-      console.log('Respuesta del servidor:', response.data)
-      
-      const { token, usuario } = response.data
-      
-      // Verificar si es un doctor pendiente de aprobación
-      if (usuario.rol === 'doctor' && usuario.estado !== 'aprobado') {
-        console.log('🚫 Doctor pendiente de aprobación:', usuario.estado)
-        setLoading(false)
-        return { 
-          success: false, 
-          error: 'Tu cuenta de doctor está pendiente de aprobación. Un administrador revisará tu solicitud y recibirás un email cuando sea aprobada.',
-          requiresApproval: true
+      const response = await api.post("/api/auth/login", credentials);
+      const { token, usuario } = response.data;
+
+      // Verificación adicional para doctores pendientes
+      if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
+        let mensaje = "Tu cuenta de doctor está pendiente de aprobación";
+
+        if (usuario.estado === "pendiente") {
+          mensaje =
+            "Tu cuenta de doctor está pendiente de aprobación por un administrador. Te notificaremos por email cuando sea aprobada.";
+        } else if (usuario.estado === "rechazado") {
+          mensaje =
+            "Tu cuenta de doctor ha sido rechazada. Por favor contacta al administrador.";
         }
+
+        return {
+          success: false,
+          requiresApproval: true,
+          error: mensaje,
+          userState: usuario.estado,
+        };
       }
-      
-      // Verificar si el usuario está confirmado
-      if (!usuario.confirmado) {
-        console.log('🚫 Usuario no confirmado')
-        setLoading(false)
-        return { 
-          success: false, 
-          error: 'Por favor, confirma tu cuenta antes de iniciar sesión. Revisa tu email.',
-          requiresConfirmation: true
-        }
-      }
-      
-      localStorage.setItem('token', token)
-      setToken(token)
-      setUser(usuario)
-      setLoading(false)
-      
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      
-      return { success: true, data: response.data }
+
+      localStorage.setItem("token", token);
+      setToken(token);
+      setUser(usuario);
+
+      // Configurar Axios para incluir token en futuras peticiones
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      return { success: true };
     } catch (error) {
-      console.error('Error en login:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al iniciar sesión' 
-      }
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al iniciar sesión",
+      };
     }
-  }
+  };
 
   const register = async (userData) => {
-    setLoading(true)
-    
-    console.log('🔄 Registrando usuario:', userData)
-    
     try {
-      const response = await api.post('/api/auth/registro', userData)
-      
-      console.log('✅ Respuesta del servidor:', response.data)
-      
-      // Para doctores, no guardar el token hasta que sea aprobado
-      if (userData.rol === 'doctor') {
-        setLoading(false)
-        return { 
-          success: true, 
-          data: response.data,
-          mensaje: response.data.mensaje || 'Registro exitoso. Revisa tu email para confirmar tu cuenta.'
-        }
-      }
-      
-      // Para pacientes, guardar token y usuario
-      const { token, usuario } = response.data
-      
-      localStorage.setItem('token', token)
-      setToken(token)
-      setUser(usuario)
-      setLoading(false)
-      
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      
-      return { 
-        success: true, 
-        data: response.data,
-        mensaje: response.data.mensaje || 'Registro exitoso.'
-      }
+      console.log("📤 Enviando al backend:", userData);
+      console.log("📋 JSON.stringify:", JSON.stringify(userData));
+      const response = await api.post("/api/auth/registro", userData);
+      console.log("📥 Respuesta del backend:", response.data);
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('❌ Error en registro:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al registrar usuario' 
-      }
-    }
-  }
+      console.log("❌ Error completo:", error);
+      console.log("❌ Error response:", error.response);
+      console.log("❌ Error request:", error.request);
+      console.log("❌ Error message:", error.message);
+      console.log("❌ Status del error:", error.response?.status);
+      console.log("❌ Data del error:", error.response?.data);
 
-  const updateUser = async (userData, avatarFile = null) => {
-    setLoading(true)
-    
-    try {
-      let response
-      
-      if (avatarFile) {
-        // Si hay archivo, usar FormData
-        const formData = new FormData()
-        
-        console.log('📤 Datos del formulario:', userData)
-        console.log('📸 Archivo seleccionado:', avatarFile.name, avatarFile.type, avatarFile.size)
-        
-        // Agregar campos de texto
-        Object.keys(userData).forEach(key => {
-          if (userData[key]) {
-            formData.append(key, userData[key])
-            console.log(`✅ Agregado al FormData: ${key} = ${userData[key]}`)
-          }
-        })
-        
-        // Agregar archivo de avatar
-        formData.append('foto', avatarFile)
-        console.log('📸 Foto agregada al FormData')
-        
-        // Debug: mostrar contenido del FormData
-        for (let [key, value] of formData.entries()) {
-          console.log(`🔍 FormData entry: ${key} =`, value instanceof File ? `File(${value.name}, ${value.type}, ${value.size})` : value)
-        }
-        
-        response = await api.put('/api/pacientes/perfil/paciente', formData)
-        // Axios establece automáticamente el Content-Type correcto para FormData
+      let errorMessage = "Error al registrarse";
+
+      if (error.response) {
+        // El servidor respondió con un estado de error
+        errorMessage =
+          error.response.data?.mensaje ||
+          error.response.data?.msg ||
+          error.response.data?.error ||
+          `Error del servidor (${error.response.status})`;
+      } else if (error.request) {
+        // La solicitud se hizo pero no hubo respuesta
+        errorMessage =
+          "No se pudo conectar con el servidor. Intenta nuevamente.";
       } else {
-        // Si no hay archivo, enviar JSON normal
-        response = await api.put('/api/pacientes/perfil/paciente', userData)
+        // Error en la configuración de la solicitud
+        errorMessage =
+          error.message || "Error en la configuración de la solicitud";
       }
-      
-      setUser(response.data.usuario)
-      setLoading(false)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ Error completo en updateUser:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.msg || 'Error al actualizar perfil' 
-      }
-    }
-  }
 
-  const getProfile = async () => {
-    setLoading(true)
-    
-    try {
-      console.log('🔍 Obteniendo perfil del usuario')
-      
-      const response = await api.get('/api/auth/perfil')
-      
-      console.log('✅ Perfil obtenido:', response.data)
-      
-      setUser(response.data.data)
-      setLoading(false)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ Error al obtener perfil:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al obtener perfil' 
-      }
+      return {
+        success: false,
+        error: errorMessage,
+      };
     }
-  }
-
-  const updateDoctorProfile = async (doctorData, avatarFile = null) => {
-    setLoading(true)
-    
-    try {
-      let response
-      
-      if (avatarFile) {
-        // Si hay archivo, usar FormData
-        const formData = new FormData()
-        
-        console.log('📤 Datos del doctor:', doctorData)
-        console.log('📸 Archivo de foto:', avatarFile.name, avatarFile.type, avatarFile.size)
-        
-        // Agregar campos de texto
-        Object.keys(doctorData).forEach(key => {
-          if (doctorData[key]) {
-            formData.append(key, doctorData[key])
-            console.log(`✅ Agregado al FormData: ${key} = ${doctorData[key]}`)
-          }
-        })
-        
-        // Agregar archivo de foto
-        formData.append('foto', avatarFile)
-        console.log('📸 Foto agregada al FormData')
-        
-        // Debug: mostrar contenido del FormData
-        for (let [key, value] of formData.entries()) {
-          console.log(`🔍 FormData entry: ${key} =`, value instanceof File ? `File(${value.name}, ${value.type}, ${value.size})` : value)
-        }
-        
-        response = await api.put('/api/doctores/perfil/doctor', formData)
-      } else {
-        // Si no hay archivo, enviar JSON normal
-        response = await api.put('/api/doctores/perfil/doctor', doctorData)
-      }
-      
-      console.log('✅ Perfil de doctor actualizado:', response.data)
-      
-      setUser(response.data.usuario || response.data.data)
-      setLoading(false)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ Error al actualizar perfil de doctor:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al actualizar perfil' 
-      }
-    }
-  }
-
-  const updatePassword = async (passwordData) => {
-    setLoading(true)
-    
-    try {
-      console.log('🔄 Actualizando contraseña')
-      
-      const response = await api.put('/api/auth/actualizar-password', passwordData)
-      
-      console.log('✅ Contraseña actualizada:', response.data)
-      
-      setLoading(false)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ Error al actualizar contraseña:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al actualizar contraseña' 
-      }
-    }
-  }
-
-  const approveDoctor = async (doctorId, estado) => {
-    setLoading(true)
-    
-    try {
-      console.log(`🔄 ${estado === 'aprobado' ? 'Aprobando' : 'Rechazando'} doctor:`, doctorId)
-      
-      const response = await api.put(`/api/doctores/${doctorId}/estado`, {
-        estado
-      })
-      
-      console.log('✅ Respuesta del servidor:', response.data)
-      
-      setLoading(false)
-      
-      return { 
-        success: true, 
-        data: response.data,
-        mensaje: response.data.mensaje || `Doctor ${estado} exitosamente`
-      }
-    } catch (error) {
-      console.error('❌ Error al actualizar estado del doctor:', error.response?.data || error.message)
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || error.response?.data?.msg || 'Error al actualizar estado del doctor' 
-      }
-    }
-  }
-
-  const getPendingDoctors = async () => {
-    setLoading(true)
-    
-    try {
-      const response = await api.get('/api/doctores/pendientes')
-      
-      setLoading(false)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      setLoading(false)
-      return { 
-        success: false, 
-        error: error.response?.data?.mensaje || 'Error al obtener doctores pendientes' 
-      }
-    }
-  }
+  };
 
   const logout = () => {
-    localStorage.removeItem('token')
-    setToken(null)
-    setUser(null)
-    api.defaults.headers.common['Authorization'] = null
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+    delete api.defaults.headers.common["Authorization"];
+  };
+
+  const updateProfile = async (userData) => {
+    try {
+      const response = await api.put("/api/auth/perfil", userData);
+      setUser(response.data.usuario);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al actualizar perfil",
+      };
+    }
+  };
+
+  const updateUser = async (userData, file = null) => {
+    try {
+      let response;
+
+      // Limpiar datos vacíos para evitar problemas en el backend
+      const cleanData = {};
+      Object.keys(userData).forEach((key) => {
+        if (
+          userData[key] !== null &&
+          userData[key] !== undefined &&
+          userData[key] !== ""
+        ) {
+          cleanData[key] = userData[key];
+        }
+      });
+
+      if (file) {
+        const formData = new FormData();
+        Object.keys(cleanData).forEach((key) => {
+          formData.append(key, cleanData[key]);
+        });
+        formData.append("foto", file);
+        // Usar endpoint específico según el rol
+        if (user?.rol === "doctor") {
+          response = await api.put("/api/doctores/perfil/doctor", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } else {
+          response = await api.put("/api/auth/perfil", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
+      } else {
+        // Usar endpoint específico según el rol - solo enviar datos limpios sin foto
+        if (user?.rol === "doctor") {
+          response = await api.put("/api/doctores/perfil/doctor", cleanData);
+        } else {
+          response = await api.put("/api/auth/perfil", cleanData);
+        }
+      }
+
+      // 🔥 Actualizar el usuario con la respuesta del backend
+      const updatedUser = response.data.data || response.data.usuario;
+
+      setUser((prev) => ({
+        ...prev,
+        ...updatedUser,
+      }));
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.mensaje ||
+          error.response?.data?.msg ||
+          "Error al actualizar perfil",
+      };
+    }
+  };
+
+  // 🔥 Nueva función para refrescar datos del usuario
+  const refreshUserData = async () => {
+    try {
+      const response = await api.get("/api/auth/verificar-token");
+      const usuario = response.data.usuario;
+      
+      // Verificación adicional para doctores pendientes
+      if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
+        localStorage.removeItem("token");
+        setToken(null);
+        setUser(null);
+        return;
+      }
+
+      setUser(usuario);
+    } catch (error) {
+      console.error("Error refrescando datos del usuario:", error);
+      // En caso de error, mantener el usuario actual pero loguear el problema
+    }
+  };
+
+  // 🔥 Función para sincronizar datos del doctor
+  const syncDoctorData = async (userData) => {
+    try {
+      // 1. Actualizar en el endpoint específico de doctores
+      const response = await api.put("/api/doctores/perfil/doctor", userData);
+      
+      // 2. Actualizar el estado del usuario con la respuesta
+      if (response.data.usuario) {
+        setUser((prev) => ({
+          ...prev,
+          ...response.data.usuario,
+        }));
+      }
+      
+      // 3. Refrescar datos del usuario para asegurar persistencia
+      await refreshUserData();
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error sincronizando datos del doctor:", error);
+      return { 
+        success: false, 
+        error: error.response?.data?.mensaje || "Error al sincronizar datos" 
+      };
+    }
+  };
+
+  const updatePassword = async (passwordData) => {
+    try {
+      const response = await api.put(
+        "/api/auth/actualizar-password",
+        passwordData,
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al actualizar contraseña",
+      };
+    }
+  };
+
+  const getPendingDoctors = async () => {
+    try {
+      const response = await api.get('/api/admin/doctores-pendientes')
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al obtener doctores pendientes'
+      }
+    }
   }
+
+  const approveDoctor = async (doctorId, accion) => {
+    try {
+      const activo = accion === 'aprobado' ? true : false
+      const response = await api.put(
+        `/api/admin/doctores/${doctorId}/estado`,
+        { activo }
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al cambiar estado del doctor'
+      }
+    }
+  }
+
+  const getAllDoctors = async () => {
+    try {
+      const response = await api.get("/api/doctores");
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al obtener doctores",
+      };
+    }
+  };
+
+  const getDoctorById = async (id) => {
+    try {
+      const response = await api.get(`/api/doctores/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al obtener doctor",
+      };
+    }
+  };
+
+  const getApprovedDoctors = async () => {
+    try {
+      const response = await api.get("/api/doctores/aprobados/lista");
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.msg || "Error al obtener doctores aprobados",
+      };
+    }
+  };
+
+  const deleteDoctor = async (id) => {
+    try {
+      const response = await api.delete(`/api/admin/doctores/${id}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al eliminar doctor",
+      };
+    }
+  };
+
+  const getAdminCitas = async (page = 1) => {
+    try {
+      const response = await api.get(`/api/admin/citas?page=${page}`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al obtener citas'
+      }
+    }
+  }
+
+  const getAdminPacientes = async (page = 1) => {
+    try {
+      const response = await api.get(`/api/admin/pacientes?page=${page}`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al obtener pacientes'
+      }
+    }
+  }
+
+  const reasignarCitas = async (doctorOrigenId, doctorDestinoId, reasignarTodas = true) => {
+    try {
+      const response = await api.put(
+        `/api/admin/doctores/${doctorOrigenId}/reasignar-citas`,
+        { doctorDestino: doctorDestinoId, reasignarTodas }
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al reasignar citas'
+      }
+    }
+  }
+
+  const updateDoctorHorario = async (doctorId, horarioAtencion) => {
+    try {
+      const response = await api.put(`/api/doctores/${doctorId}`, { horarioAtencion })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al actualizar horario'
+      }
+    }
+  }
+
+  const getAdminPacienteById = async (id) => {
+    try {
+      const response = await api.get(`/api/admin/pacientes/${id}`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al obtener paciente'
+      }
+    }
+  }
+
+  const deleteAdminPaciente = async (id) => {
+    try {
+      const response = await api.delete(`/api/admin/pacientes/${id}`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al eliminar paciente'
+      }
+    }
+  }
+
+  
+  const getDoctorProfile = async () => {
+    try {
+      const response = await api.get("/api/doctores/perfil/doctor");
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al obtener perfil de doctor",
+      };
+    }
+  };
+
+  const updateDoctorProfile = async (userData) => {
+    try {
+      const response = await api.put("/api/doctores/perfil/doctor", userData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.msg || "Error al actualizar perfil de doctor",
+      };
+    }
+  };
+
+  // Configurar Axios para incluir token si existe
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
+  }, [token]);
 
   const value = {
     user,
@@ -361,20 +468,29 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateProfile,
     updateUser,
-    getProfile,
-    updateDoctorProfile,
     updatePassword,
-    approveDoctor,
+    refreshUserData,
+    syncDoctorData,
     getPendingDoctors,
-    isAuthenticated: !!token
-  }
+    approveDoctor,
+    getAllDoctors,
+    getDoctorById,
+    getApprovedDoctors,
+    deleteDoctor,
+    getAdminCitas,
+    getAdminPacientes,
+    getAdminPacienteById,
+    deleteAdminPaciente,
+    reasignarCitas,
+    updateDoctorHorario,
+    getDoctorProfile,
+    updateDoctorProfile,
+    isAuthenticated: !!token,
+  };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
 
-export default AuthContext
+export default AuthContext;

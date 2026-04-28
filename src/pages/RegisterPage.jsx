@@ -48,48 +48,59 @@ const RegisterPage = () => {
   const validateForm = () => {
     const newErrors = {}
     
+    // Validar nombre - solo letras
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'El nombre es requerido'
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.nombre.trim())) {
+      newErrors.nombre = 'El nombre solo debe contener letras'
     } else if (formData.nombre.trim().length < 3) {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres'
     }
     
+    // Validar apellido - solo letras
     if (!formData.apellido.trim()) {
       newErrors.apellido = 'El apellido es requerido'
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.apellido.trim())) {
+      newErrors.apellido = 'El apellido solo debe contener letras'
     } else if (formData.apellido.trim().length < 3) {
       newErrors.apellido = 'El apellido debe tener al menos 3 caracteres'
     }
     
+    // Validar email
     if (!formData.email) {
       newErrors.email = 'El correo electrónico es requerido'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
       newErrors.email = 'El correo electrónico no es válido'
     }
     
+    // Validar contraseña
     if (!formData.password) {
       newErrors.password = 'La contraseña es requerida'
     } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres'
     }
     
+    // Validar confirmación de contraseña
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Confirma tu contraseña'
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden'
     }
     
+    // Validar teléfono - exactamente 10 dígitos
     if (!formData.telefono) {
       newErrors.telefono = 'El teléfono es requerido'
     } else if (!/^\d{10}$/.test(formData.telefono.replace(/\D/g, ''))) {
-      newErrors.telefono = 'El teléfono debe tener 10 dígitos'
+      newErrors.telefono = 'El teléfono debe tener exactamente 10 dígitos'
     }
     
     // Validaciones específicas para doctores
     if (formData.rol === 'doctor') {
+      // Validar cédula - exactamente 10 dígitos
       if (!formData.cedula.trim()) {
         newErrors.cedula = 'La cédula es requerida para doctores'
       } else if (!/^\d{10}$/.test(formData.cedula.replace(/\D/g, ''))) {
-        newErrors.cedula = 'La cédula debe tener 10 dígitos'
+        newErrors.cedula = 'La cédula debe tener exactamente 10 dígitos'
       }
       
       if (!formData.especialidad.trim()) {

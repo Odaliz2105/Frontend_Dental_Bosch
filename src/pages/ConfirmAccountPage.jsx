@@ -65,13 +65,33 @@ const ConfirmAccountPage = () => {
       }
     } catch (error) {
       console.log('❌ Error en confirmación:', error)
+      console.log('❌ Error response:', error.response)
+      console.log('❌ Error status:', error.response?.status)
+      console.log('❌ Error data:', error.response?.data)
+      
+      let errorMessage = 'Error de conexión. Por favor, intenta nuevamente.'
+      
+      if (error.response?.status === 400) {
+        // Token inválido o expirado
+        errorMessage = 'El enlace de confirmación es inválido o ha expirado. Por favor, solicita un nuevo registro.'
+      } else if (error.response?.status === 404) {
+        // Token no encontrado
+        errorMessage = 'El enlace de confirmación no existe. Por favor, regístrate nuevamente.'
+      } else if (error.response?.status >= 500) {
+        // Error del servidor
+        errorMessage = 'Error del servidor. Por favor, intenta más tarde.'
+      } else if (!error.response) {
+        // Error de conexión
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+      
       setStatus('error')
-      setMessage('❌ Error de conexión. Por favor, intenta nuevamente.')
+      setMessage(`❌ ${errorMessage}`)
       
       setTimeout(() => {
         navigate('/login', { 
           state: { 
-            message: 'Error al confirmar la cuenta. Por favor, intenta nuevamente.',
+            message: errorMessage,
             type: 'error'
           }
         })

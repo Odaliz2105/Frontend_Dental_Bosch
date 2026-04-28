@@ -15,6 +15,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import RoleBasedDashboard from './components/RoleBasedDashboard'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import ServicesPage from './pages/ServicesPage'
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/restablecer-password/:token" element={<ResetPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/recuperar-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/services" element={<ServicesPage />} />
             
             {/* Rutas protegidas */}
             <Route 
