@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
 
-const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
+const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes = 0 }) => {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -106,10 +106,10 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                   >
                     <Icon size={18} />
                     <span className="font-medium text-sm">{item.title}</span>
-                    {item.tab === 'solicitudes' && (
+                    {item.tab === 'solicitudes' && statSolicitudes > 0 && (
                       <span className={`ml-auto text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold
                         ${activa ? 'bg-white text-primary' : 'bg-yellow-400 text-white'}`}>
-                        !
+                        {statSolicitudes}
                       </span>
                     )}
                   </button>

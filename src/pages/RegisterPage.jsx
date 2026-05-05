@@ -16,8 +16,7 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: '',
     telefono: '',
-    fechaNacimiento: '',
-    rol: 'paciente',
+    rol: 'doctor',
     cedula: '', // Campo para doctores
     especialidad: '' // Campo para doctores
   })
@@ -94,18 +93,14 @@ const RegisterPage = () => {
       newErrors.telefono = 'El teléfono debe tener exactamente 10 dígitos'
     }
     
-    // Validaciones específicas para doctores
-    if (formData.rol === 'doctor') {
-      // Validar cédula - exactamente 10 dígitos
-      if (!formData.cedula.trim()) {
-        newErrors.cedula = 'La cédula es requerida para doctores'
-      } else if (!/^\d{10}$/.test(formData.cedula.replace(/\D/g, ''))) {
-        newErrors.cedula = 'La cédula debe tener exactamente 10 dígitos'
-      }
-      
-      if (!formData.especialidad.trim()) {
-        newErrors.especialidad = 'La especialidad es requerida para doctores'
-      }
+    // Validar cédula - exactamente 10 dígitos
+    if (!formData.cedula.trim()) {
+      newErrors.cedula = 'La cédula es requerida'
+    } else if (!/^\d{10}$/.test(formData.cedula.replace(/\D/g, ''))) {
+      newErrors.cedula = 'La cédula debe tener 10 dígitos'
+    }
+    if (!formData.especialidad.trim()) {
+      newErrors.especialidad = 'La especialidad es requerida'
     }
     
     return newErrors
@@ -167,7 +162,7 @@ const RegisterPage = () => {
                 Crear cuenta
               </h2>
               <p className="text-gray-600">
-                Únete a Dental Bosch y cuida tu sonrisa
+                Regístrate como doctor en Dental Bosch
               </p>
             </div>
 
@@ -233,57 +228,42 @@ const RegisterPage = () => {
               />
 
               <Input
-                label="Fecha de nacimiento"
-                type="date"
-                name="fechaNacimiento"
-                value={formData.fechaNacimiento}
+                label="Cédula"
+                type="text"
+                name="cedula"
+                value={formData.cedula}
                 onChange={handleChange}
-                error={errors.fechaNacimiento}
-                icon={Calendar}
+                placeholder="0117054321"
+                error={errors.cedula}
+                icon={FileText}
+                required
               />
 
-              {/* Campos específicos para doctores */}
-              {formData.rol === 'doctor' && (
-                <>
-                  <Input
-                    label="Cédula profesional"
-                    type="text"
-                    name="cedula"
-                    value={formData.cedula}
-                    onChange={handleChange}
-                    placeholder="0117054321"
-                    error={errors.cedula}
-                    icon={FileText}
-                    required={formData.rol === 'doctor'}
-                  />
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Especialidad
-                    </label>
-                    <select
-                      name="especialidad"
-                      value={formData.especialidad}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      required={formData.rol === 'doctor'}
-                    >
-                      <option value="">Selecciona una especialidad</option>
-                      <option value="Ortodoncia">Ortodoncia</option>
-                      <option value="Odontopediatría">Odontopediatría</option>
-                      <option value="Endodoncia">Endodoncia</option>
-                      <option value="Periodoncia">Periodoncia</option>
-                      <option value="Cirugía Oral">Cirugía Oral</option>
-                      <option value="Prótesis Dental">Prótesis Dental</option>
-                      <option value="Odontología General">Odontología General</option>
-                      <option value="Cosmética Dental">Cosmética Dental</option>
-                    </select>
-                    {errors.especialidad && (
-                      <p className="mt-1 text-sm text-red-600">{errors.especialidad}</p>
-                    )}
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Especialidad
+                </label>
+                <select
+                  name="especialidad"
+                  value={formData.especialidad}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                >
+                  <option value="">Selecciona una especialidad</option>
+                  <option value="Ortodoncia">Ortodoncia</option>
+                  <option value="Odontopediatría">Odontopediatría</option>
+                  <option value="Endodoncia">Endodoncia</option>
+                  <option value="Periodoncia">Periodoncia</option>
+                  <option value="Cirugía Oral">Cirugía Oral</option>
+                  <option value="Prótesis Dental">Prótesis Dental</option>
+                  <option value="Odontología General">Odontología General</option>
+                  <option value="Cosmética Dental">Cosmética Dental</option>
+                </select>
+                {errors.especialidad && (
+                  <p className="mt-1 text-sm text-red-600">{errors.especialidad}</p>
+                )}
+              </div>
 
               <div className="relative">
                 <Input
@@ -327,34 +307,6 @@ const RegisterPage = () => {
                 </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de cuenta
-                </label>
-                <select
-                  name="rol"
-                  value={formData.rol}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="paciente">👤 Paciente</option>
-                  <option value="doctor">🩺 Doctor</option>
-                </select>
-              </div>
-
-              {/* Información adicional según rol */}
-              {formData.rol === 'doctor' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <Stethoscope className="w-5 h-5 text-blue-600 mr-2" />
-                    <h3 className="text-sm font-medium text-blue-900">Información para Doctores</h3>
-                  </div>
-                  <p className="text-xs text-blue-700">
-                    Tu cuenta será revisada por un administrador antes de ser aprobada. 
-                    Recibirás un correo electrónico cuando tu cuenta sea activada.
-                  </p>
-                </div>
-              )}
 
               <div className="flex items-center">
                 <input
@@ -373,6 +325,17 @@ const RegisterPage = () => {
                     política de privacidad
                   </Link>
                 </label>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center mb-2">
+                  <Stethoscope className="w-5 h-5 text-blue-600 mr-2" />
+                  <h3 className="text-sm font-medium text-blue-900">Información importante</h3>
+                </div>
+                <p className="text-xs text-blue-700">
+                  Tu cuenta será revisada por un administrador antes de ser aprobada. 
+                  Recibirás un correo electrónico cuando tu cuenta sea activada.
+                </p>
               </div>
 
               <Button
