@@ -1,13 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-
 import api from "../services/api";
 
-
-
 const AuthContext = createContext();
-
-
-
 /* eslint-disable */
 
 export const useAuth = () => {
@@ -26,8 +20,6 @@ export const useAuth = () => {
 
 /* eslint-enable */
 
-
-
 export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
@@ -36,14 +28,11 @@ export const AuthProvider = ({ children }) => {
 
   const [token, setToken] = useState(localStorage.getItem("token"));
 
-
-
   useEffect(() => {
 
     if (token) {
 
       // Verificar token y obtener datos del usuario
-
       api
 
         .get("/api/auth/verificar-token")
@@ -51,8 +40,6 @@ export const AuthProvider = ({ children }) => {
         .then((response) => {
 
           const usuario = response.data.usuario;
-
-
 
           // Verificación adicional para doctores pendientes
 
@@ -70,8 +57,6 @@ export const AuthProvider = ({ children }) => {
 
           }
 
-
-
           setUser(usuario);
 
         })
@@ -79,9 +64,7 @@ export const AuthProvider = ({ children }) => {
         .catch(() => {
 
           localStorage.removeItem("token");
-
           setToken(null);
-
           setUser(null);
 
         })
@@ -89,36 +72,27 @@ export const AuthProvider = ({ children }) => {
         .finally(() => {
 
           setTimeout(() => setLoading(false), 0);
-
         });
 
     } else {
 
       setTimeout(() => setLoading(false), 0);
-
     }
 
   }, [token]);
-
-
 
   const login = async (credentials) => {
 
     try {
 
       const response = await api.post("/api/auth/login", credentials);
-
       const { token, usuario } = response.data;
-
-
 
       // Verificación adicional para doctores pendientes
 
       if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
 
         let mensaje = "Tu cuenta de doctor está pendiente de aprobación";
-
-
 
         if (usuario.estado === "pendiente") {
 
@@ -131,41 +105,26 @@ export const AuthProvider = ({ children }) => {
           mensaje =
 
             "Tu cuenta de doctor ha sido rechazada. Por favor contacta al administrador.";
-
         }
-
-
 
         return {
 
           success: false,
-
           requiresApproval: true,
-
           error: mensaje,
-
           userState: usuario.estado,
 
         };
-
       }
 
-
-
       localStorage.setItem("token", token);
-
       setToken(token);
-
       setUser(usuario);
 
 
 
       // Configurar Axios para incluir token en futuras peticiones
-
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-
-
       return { success: true };
 
     } catch (error) {
@@ -173,63 +132,40 @@ export const AuthProvider = ({ children }) => {
       return {
 
         success: false,
-
         error: error.response?.data?.msg || "Error al iniciar sesión",
 
       };
-
     }
-
   };
 
 
 
   const register = async (userData) => {
-
     try {
 
       console.log("📤 Enviando al backend:", userData);
-
       console.log("📋 JSON.stringify:", JSON.stringify(userData));
-
       const response = await api.post("/api/auth/registro", userData);
-
       console.log("📥 Respuesta del backend:", response.data);
-
       return { success: true, data: response.data };
-
     } catch (error) {
 
       console.log("❌ Error completo:", error);
-
       console.log("❌ Error response:", error.response);
-
       console.log("❌ Error request:", error.request);
-
       console.log("❌ Error message:", error.message);
-
       console.log("❌ Status del error:", error.response?.status);
-
       console.log("❌ Data del error:", error.response?.data);
-
-
 
       let errorMessage = "Error al registrarse";
 
-
-
       if (error.response) {
-
         // El servidor respondió con un estado de error
 
         errorMessage =
-
           error.response.data?.mensaje ||
-
           error.response.data?.msg ||
-
           error.response.data?.error ||
-
           `Error del servidor (${error.response.status})`;
 
       } else if (error.request) {
@@ -237,74 +173,47 @@ export const AuthProvider = ({ children }) => {
         // La solicitud se hizo pero no hubo respuesta
 
         errorMessage =
-
           "No se pudo conectar con el servidor. Intenta nuevamente.";
 
       } else {
 
         // Error en la configuración de la solicitud
-
         errorMessage =
-
           error.message || "Error en la configuración de la solicitud";
-
       }
 
-
-
       return {
-
         success: false,
-
         error: errorMessage,
-
       };
-
     }
-
   };
 
 
 
   const logout = () => {
-
     localStorage.removeItem("token");
-
     setToken(null);
-
     setUser(null);
-
     delete api.defaults.headers.common["Authorization"];
 
   };
 
-
-
   const updateProfile = async (userData) => {
-
     try {
 
       const response = await api.put("/api/auth/perfil", userData);
-
       setUser(response.data.usuario);
-
       return { success: true, data: response.data };
-
     } catch (error) {
 
       return {
 
         success: false,
-
         error: error.response?.data?.msg || "Error al actualizar perfil",
-
       };
-
     }
-
   };
-
-
 
   const updateUser = async (userData, file = null) => {
 
@@ -312,31 +221,22 @@ export const AuthProvider = ({ children }) => {
 
       let response;
 
-
-
       // Limpiar datos vacíos para evitar problemas en el backend
-
       const cleanData = {};
 
       Object.keys(userData).forEach((key) => {
 
         if (
-
           userData[key] !== null &&
-
           userData[key] !== undefined &&
-
           userData[key] !== ""
 
         ) {
 
           cleanData[key] = userData[key];
-
         }
 
       });
-
-
 
       if (file) {
 
@@ -353,19 +253,14 @@ export const AuthProvider = ({ children }) => {
         // Usar endpoint específico según el rol
 
         if (user?.rol === "doctor") {
-
           response = await api.put("/api/doctores/perfil/doctor", formData, {
-
             headers: { "Content-Type": "multipart/form-data" },
-
           });
 
         } else {
 
           response = await api.put("/api/auth/perfil", formData, {
-
             headers: { "Content-Type": "multipart/form-data" },
-
           });
 
         }
@@ -375,24 +270,17 @@ export const AuthProvider = ({ children }) => {
         // Usar endpoint específico según el rol - solo enviar datos limpios sin foto
 
         if (user?.rol === "doctor") {
-
           response = await api.put("/api/doctores/perfil/doctor", cleanData);
-
         } else {
 
           response = await api.put("/api/auth/perfil", cleanData);
-
         }
 
       }
 
-
-
       // 🔥 Actualizar el usuario con la respuesta del backend
 
       const updatedUser = response.data.data || response.data.usuario;
-
-
 
       setUser((prev) => ({
 
@@ -401,7 +289,6 @@ export const AuthProvider = ({ children }) => {
         ...updatedUser,
 
       }));
-
 
 
       return { success: true, data: response.data };
@@ -419,13 +306,9 @@ export const AuthProvider = ({ children }) => {
           error.response?.data?.msg ||
 
           "Error al actualizar perfil",
-
       };
-
     }
-
   };
-
 
 
   // 🔥 Nueva función para refrescar datos del usuario
@@ -435,11 +318,8 @@ export const AuthProvider = ({ children }) => {
     try {
 
       const response = await api.get("/api/auth/verificar-token");
-
       const usuario = response.data.usuario;
-
       
-
       // Verificación adicional para doctores pendientes
 
       if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
@@ -453,7 +333,6 @@ export const AuthProvider = ({ children }) => {
         return;
 
       }
-
 
 
       setUser(usuario);
@@ -479,9 +358,7 @@ export const AuthProvider = ({ children }) => {
       // 1. Actualizar en el endpoint específico de doctores
 
       const response = await api.put("/api/doctores/perfil/doctor", userData);
-
       
-
       // 2. Actualizar el estado del usuario con la respuesta
 
       if (response.data.usuario) {
@@ -489,20 +366,13 @@ export const AuthProvider = ({ children }) => {
         setUser((prev) => ({
 
           ...prev,
-
           ...response.data.usuario,
-
         }));
-
       }
-
-      
 
       // 3. Refrescar datos del usuario para asegurar persistencia
 
       await refreshUserData();
-
-      
 
       return { success: true };
 
@@ -515,23 +385,16 @@ export const AuthProvider = ({ children }) => {
         success: false, 
 
         error: error.response?.data?.mensaje || "Error al sincronizar datos" 
-
       };
-
     }
-
   };
-
 
 
   const updatePassword = async (passwordData) => {
 
     try {
-
       const response = await api.put(
-
         "/api/auth/actualizar-password",
-
         passwordData,
 
       );
@@ -539,55 +402,36 @@ export const AuthProvider = ({ children }) => {
       return { success: true, data: response.data };
 
     } catch (error) {
-
       return {
-
         success: false,
-
         error: error.response?.data?.msg || "Error al actualizar contraseña",
-
       };
-
     }
-
   };
-
-
 
   const getPendingDoctors = async () => {
 
     try {
 
       const response = await api.get('/api/admin/doctores-pendientes')
-
       return { success: true, data: response.data }
 
     } catch (error) {
 
       return {
-
         success: false,
-
         error: error.response?.data?.mensaje || 'Error al obtener doctores pendientes'
-
       }
-
     }
-
   }
-
-
 
   const approveDoctor = async (doctorId, accion) => {
 
     try {
 
       const response = await api.put(
-
         `/api/admin/doctores/${doctorId}`,
-
         { activo: accion === 'aprobado' }
-
       )
 
       return { success: true, data: response.data }
@@ -597,37 +441,49 @@ export const AuthProvider = ({ children }) => {
       return {
 
         success: false,
-
         error: error.response?.data?.mensaje || 'Error al cambiar estado del doctor'
-
       }
-
     }
-
   }
 
 
-
   const getAllDoctors = async () => {
-
     try {
-
       const response = await api.get("/api/doctores");
-
       return { success: true, data: response.data };
 
     } catch (error) {
-
       return {
-
         success: false,
-
         error: error.response?.data?.msg || "Error al obtener doctores",
-
       };
-
     }
+  };
 
+  const getAllDoctorsIncludingInactive = async () => {
+    try {
+      const response = await api.get("/api/admin/doctores");
+      return { success: true, data: response.data };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al obtener todos los doctores",
+      };
+    }
+  };
+
+  const getInactiveDoctors = async () => {
+    try {
+      const response = await api.get("/api/admin/doctores-inactivos");
+      return { success: true, data: response.data };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.msg || "Error al obtener doctores inactivos",
+      };
+    }
   };
 
 
@@ -635,21 +491,13 @@ export const AuthProvider = ({ children }) => {
   const getDoctorById = async (id) => {
 
     try {
-
       const response = await api.get(`/api/doctores/${id}`);
-
       return { success: true, data: response.data };
-
     } catch (error) {
-
       return {
-
         success: false,
-
         error: error.response?.data?.msg || "Error al obtener doctor",
-
       };
-
     }
 
   };
@@ -661,26 +509,17 @@ export const AuthProvider = ({ children }) => {
     try {
 
       const response = await api.get("/api/doctores/aprobados/lista");
-
       return { success: true, data: response.data };
-
     } catch (error) {
 
       return {
-
         success: false,
-
         error:
-
           error.response?.data?.msg || "Error al obtener doctores aprobados",
 
       };
-
     }
-
   };
-
-
 
   const deleteDoctor = async (id) => {
 
@@ -847,7 +686,48 @@ export const AuthProvider = ({ children }) => {
 
   }
 
+  const getDoctorCitas = async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString()
+      const url = queryParams ? `/api/citas/doctor?${queryParams}` : '/api/citas/doctor'
+      
+      console.log('📤 getDoctorCitas - Enviando solicitud:', url)
+      
+      const response = await api.get(url)
+      
+      console.log('📥 getDoctorCitas - Respuesta del backend:', response.data)
+      
+      return { success: true, data: response.data }
+    } catch (error) {
+      console.error('❌ getDoctorCitas - Error:', error.response?.data)
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al obtener citas del doctor'
+      }
+    }
+  }
 
+  const updateCitaEstado = async (citaId, estado, motivoCancelacion = '', notas = '') => {
+    try {
+      console.log('📤 updateCitaEstado - Enviando solicitud:', { citaId, estado, motivoCancelacion, notas })
+      
+      const response = await api.put(`/api/citas/${citaId}/estado`, {
+        estado,
+        motivoCancelacion,
+        notas
+      })
+      
+      console.log('📥 updateCitaEstado - Respuesta del backend:', response.data)
+      
+      return { success: true, data: response.data }
+    } catch (error) {
+      console.error('❌ updateCitaEstado - Error:', error.response?.data)
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al actualizar estado de la cita'
+      }
+    }
+  }
 
   const updateDoctorHorario = async (doctorId, horarioAtencion) => {
 
@@ -924,8 +804,6 @@ export const AuthProvider = ({ children }) => {
     }
 
   }
-
-
 
   
 
@@ -1077,8 +955,6 @@ export const AuthProvider = ({ children }) => {
 
       let response
 
-      
-
       console.log('📤 rechazarDoctorAdmin - Enviando al backend:', { doctorId, activo: false })
 
       
@@ -1089,7 +965,6 @@ export const AuthProvider = ({ children }) => {
 
       console.log('🎯 Usando usuario._id para rechazo:', usuarioId)
 
-      
 
       response = await api.put(`/api/admin/doctores/${usuarioId}/estado`, {
 
@@ -1117,6 +992,124 @@ export const AuthProvider = ({ children }) => {
 
     }
 
+  }
+
+  const verificarCitasDoctor = async (doctorId) => {
+    try {
+      console.log('📤 verificarCitasDoctor - Verificando citas del doctor:', doctorId)
+      
+      // Usar directamente el endpoint general de citas y filtrar
+      console.log('🔄 Usando endpoint general de citas para verificar')
+      const citasResponse = await api.get('/api/admin/citas')
+      
+      console.log('📥 Todas las citas:', citasResponse.data)
+      
+      // Filtrar citas del doctor y que estén pendientes
+      const citasDoctor = citasResponse.data.data?.filter(cita => {
+        const doctorIdCita = cita.doctor?._id || cita.doctor
+        const esMismoDoctor = doctorIdCita === doctorId
+        const estaPendiente = ['pendiente', 'confirmada', 'programada'].includes(cita.estado)
+        
+        console.log(`📋 Cita ${cita._id}: doctor=${doctorIdCita}, mismoDoctor=${esMismoDoctor}, estado=${cita.estado}, pendiente=${estaPendiente}`)
+        
+        return esMismoDoctor && estaPendiente
+      }) || []
+      
+      console.log(`🎯 Citas pendientes del doctor ${doctorId}:`, citasDoctor.length, citasDoctor)
+      
+      return {
+        success: true, 
+        data: {
+          tieneCitasPendientes: citasDoctor.length > 0,
+          totalCitasPendientes: citasDoctor.length,
+          citas: citasDoctor
+        }
+      }
+    } catch (error) {
+      console.error('❌ verificarCitasDoctor - Error:', error.response?.data)
+      return {
+        success: false,
+        error: error.response?.data?.mensaje || 'Error al verificar citas del doctor'
+      }
+    }
+  }
+
+  const softDeleteDoctor = async (doctorId) => {
+    try {
+      console.log('📤 softDeleteDoctor - Desactivando doctor:', doctorId)
+      
+      // Primero verificar si tiene citas pendientes
+      const citasCheck = await verificarCitasDoctor(doctorId)
+      
+      if (!citasCheck.success) {
+        return citasCheck
+      }
+      
+      // Si tiene citas pendientes, retornar error con información
+      if (citasCheck.data?.tieneCitasPendientes) {
+        console.log('🚫 Doctor tiene citas pendientes, no se puede desactivar')
+        return {
+          success: false,
+          tieneCitasPendientes: true,
+          datosCitas: citasCheck.data,
+          error: `No se puede desactivar al doctor. Tiene ${citasCheck.data.totalCitasPendientes} cita(s) pendiente(s). Debe reasignar las citas a otro doctor primero.`
+        }
+      }
+      
+      console.log('✅ Doctor no tiene citas pendientes, procediendo con desactivación')
+      
+      // Usar el endpoint DELETE correcto según especificación del backend
+      console.log('🔄 Usando endpoint DELETE /api/doctores/:id')
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch(`https://backend-dental-bosch-vr8o.onrender.com/api/doctores/${doctorId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      console.log('� Respuesta DELETE:', data)
+      
+      if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al desactivar doctor')
+      }
+      
+      // Emitir evento para que otros componentes se actualicen
+      window.dispatchEvent(new CustomEvent('doctorStatusChanged', {
+        detail: { doctorId, action: 'deactivated' }
+      }))
+      
+      return { success: true, data }
+    } catch (error) {
+      console.error('❌ softDeleteDoctor - Error:', error)
+      
+      return {
+        success: false,
+        error: error.message || 'Error al desactivar doctor'
+      }
+    }
+  }
+
+  const reactivarDoctor = async (doctorId) => {
+    try {
+      console.log('📤 reactivarDoctor - Reactivando doctor:', doctorId)
+      
+      // TODO: Esperando endpoint de reactivación del backend
+      // Por ahora, mostrar mensaje informativo
+      return {
+        success: false,
+        error: 'Función de reactivación no disponible temporalmente. Contacte al administrador del sistema.'
+      }
+    } catch (error) {
+      console.error('❌ reactivarDoctor - Error:', error)
+      return {
+        success: false,
+        error: error.message || 'Error al reactivar doctor'
+      }
+    }
   }
 
 
@@ -1151,6 +1144,10 @@ export const AuthProvider = ({ children }) => {
 
     getAllDoctors,
 
+    getAllDoctorsIncludingInactive,
+
+    getInactiveDoctors,
+
     getDoctorById,
 
     getApprovedDoctors,
@@ -1162,6 +1159,10 @@ export const AuthProvider = ({ children }) => {
     getAdminCitaById,
 
     getAdminPacientes,
+
+    getDoctorCitas,
+
+    updateCitaEstado,
 
     getAdminPacienteById,
 
@@ -1183,17 +1184,18 @@ export const AuthProvider = ({ children }) => {
 
     rechazarDoctorAdmin,
 
+    verificarCitasDoctor,
+
+    softDeleteDoctor,
+
+    reactivarDoctor,
+
     isAuthenticated: !!token,
 
   };
-
-
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 
 };
 
-
-
 export default AuthContext;
-

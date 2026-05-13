@@ -14,7 +14,7 @@ import ConfirmAccountPage from './pages/ConfirmAccountPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import RoleBasedDashboard from './components/RoleBasedDashboard'
-import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import ServicesPage from './pages/ServicesPage'
 
 function App() {

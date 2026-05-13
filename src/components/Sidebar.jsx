@@ -8,13 +8,13 @@ import {
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
 
-const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes = 0 }) => {
+const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes = 0, userRole }) => {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isDoctor = user?.rol === 'doctor'
-  const isAdmin = user?.rol === 'admin' || 
+  const isDoctor = userRole === 'doctor' || user?.rol === 'doctor'
+  const isAdmin = userRole === 'admin' || user?.rol === 'admin' || 
                   user?.rol === 'administrador' || 
                   user?.email === 'admin@dentalbosch.com'
 
@@ -26,11 +26,12 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
   ]
 
   const doctorMenuItems = [
-    { title: 'Inicio', path: '/dashboard', icon: Home },
-    { title: 'Citas', path: '/dashboard/citas-doctor', icon: Calendar },
-    { title: 'Pacientes', path: '/dashboard/pacientes', icon: Users },
-    { title: 'Tratamientos', path: '/dashboard/tratamientos-doctor', icon: Heart },
-    { title: 'Historial Clínico', path: '/dashboard/historial-clinico', icon: FileText },
+    { title: 'Mis Citas', tab: 'citas', icon: Calendar },
+    { title: 'Mis Pacientes', tab: 'pacientes', icon: Users },
+    { title: 'Historias Clínicas', tab: 'historias', icon: FileText },
+    { title: 'Odontograma', tab: 'odontograma', icon: Activity },
+    { title: 'Tratamientos', tab: 'tratamientos', icon: Heart },
+    { title: 'Mi Perfil', tab: 'perfil', icon: User },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -38,6 +39,11 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
   const handleAdminTab = (tab) => {
     if (setActiveTab) setActiveTab(tab)
     navigate('/dashboard', { state: { tab } })
+    setIsOpen(false)
+  }
+
+  const handleDoctorTab = (tab) => {
+    if (setActiveTab) setActiveTab(tab)
     setIsOpen(false)
   }
 
@@ -121,16 +127,19 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
           {/* Doctor navigation */}
           {isDoctor && (
             <div className="space-y-1 mb-6">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">
+                Panel Doctor
+              </p>
               {doctorMenuItems.map((item) => {
                 const Icon = item.icon
+                const activa = activeTab === item.tab
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsOpen(false)}
+                  <button
+                    key={item.tab}
+                    onClick={() => handleDoctorTab(item.tab)}
                     className={`
-                      flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                      ${isActive(item.path)
+                      w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left
+                      ${activa
                         ? 'bg-primary text-white shadow-sm'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
                       }
@@ -138,7 +147,7 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
                   >
                     <Icon size={18} />
                     <span className="font-medium text-sm">{item.title}</span>
-                  </Link>
+                  </button>
                 )
               })}
             </div>
@@ -149,20 +158,22 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">
               Cuenta
             </p>
-            <Link
-              to="/dashboard/perfil"
-              onClick={() => setIsOpen(false)}
-              className={`
-                flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                ${isActive('/dashboard/perfil')
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
-                }
-              `}
-            >
-              <User size={18} />
-              <span className="font-medium text-sm">Mi Perfil</span>
-            </Link>
+            {!isDoctor && (
+              <Link
+                to="/dashboard/perfil"
+                onClick={() => setIsOpen(false)}
+                className={`
+                  flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200
+                  ${isActive('/dashboard/perfil')
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
+                  }
+                `}
+              >
+                <User size={18} />
+                <span className="font-medium text-sm">Mi Perfil</span>
+              </Link>
+            )}
 
             <button
               onClick={() => { logout(); setIsOpen(false) }}

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useAuth } from '../context/AuthContext'
-import AdminDashboardPage from '../pages/AdminDashboardPage'
-import DoctorDashboardPage from '../pages/DoctorDashboardPage'
+import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
+import DoctorDashboardPage from '../pages/doctor/DoctorDashboardPage'
 
 const RoleBasedDashboard = () => {
   const { user } = useAuth()

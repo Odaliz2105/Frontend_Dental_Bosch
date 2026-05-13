@@ -85,11 +85,11 @@ const DashboardPage = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
-      <div className="flex-1 lg:ml-72">
+      <div className="flex-1 lg:ml-0">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex items-center justify-between h-14">
               <div className="flex items-center">
                 <button
                   onClick={() => setSidebarOpen(true)}
@@ -100,23 +100,23 @@ const DashboardPage = () => {
                   </svg>
                 </button>
                 
-                <h1 className="ml-4 text-2xl font-bold text-dark">
+                <h1 className="ml-4 text-xl font-bold text-dark">
                   Panel Doctor
                 </h1>
               </div>
               
               <div className="flex items-center space-x-4">
-                <div className="relative">
+                <div className="relative hidden md:block">
                   <input
                     type="text"
                     placeholder="Buscar..."
-                    className="w-64 px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-48 px-3 py-1.5 pl-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                   />
-                  <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                  <Search className="absolute left-2.5 top-2 text-gray-400" size={16} />
                 </div>
                 
                 <button className="relative p-2 text-gray-500 hover:text-gray-700">
-                  <Bell size={20} />
+                  <Bell size={18} />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </button>
               </div>
@@ -125,18 +125,18 @@ const DashboardPage = () => {
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="p-4 lg:p-6">
           {/* Welcome Section */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-8"
+            className="mb-6"
           >
-            <h2 className="text-3xl font-bold text-dark mb-2">
+            <h2 className="text-2xl font-bold text-dark mb-1">
               ¡Bienvenido de vuelta, {user?.nombre}!
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm">
               Aquí está el resumen de tu clínica hoy
             </p>
           </motion.div>
@@ -146,7 +146,7 @@ const DashboardPage = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
           >
             {stats.map((stat, index) => {
               const Icon = stat.icon
@@ -154,24 +154,24 @@ const DashboardPage = () => {
                 <motion.div
                   key={index}
                   variants={itemVariants}
-                  whileHover={{ y: -5 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  whileHover={{ y: -3 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-gray-100"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-lg flex items-center justify-center`}>
-                      <Icon size={24} className="text-white" />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`w-10 h-10 bg-gradient-to-r ${stat.color} rounded-lg flex items-center justify-center`}>
+                      <Icon size={20} className="text-white" />
                     </div>
-                    <span className={`text-sm font-medium ${
+                    <span className={`text-xs font-medium ${
                       stat.change.startsWith('+') ? 'text-green-600' : 'text-gray-600'
                     }`}>
                       {stat.change}
                     </span>
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-dark mb-1">
+                  <h3 className="text-xl font-bold text-dark mb-1">
                     {stat.value}
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-600 text-xs">
                     {stat.title}
                   </p>
                 </motion.div>
@@ -179,7 +179,7 @@ const DashboardPage = () => {
             })}
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Recent Appointments */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -187,9 +187,9 @@ const DashboardPage = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100"
             >
-              <div className="p-6 border-b border-gray-100">
+              <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-dark">
+                  <h3 className="text-base font-semibold text-dark">
                     Citas de Hoy
                   </h3>
                   <Button variant="ghost" size="small">
@@ -199,7 +199,7 @@ const DashboardPage = () => {
                 </div>
               </div>
               
-              <div className="p-6">
+              <div className="p-4">
                 <div className="space-y-4">
                   {recentAppointments.map((appointment) => (
                     <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -242,13 +242,13 @@ const DashboardPage = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100"
             >
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-dark">
+              <div className="p-4 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-dark">
                   Acciones Rápidas
                 </h3>
               </div>
               
-              <div className="p-6">
+              <div className="p-4">
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { icon: Users, label: 'Nuevo Paciente', color: 'bg-blue-500' },
