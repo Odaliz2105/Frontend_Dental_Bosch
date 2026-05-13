@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from '../../components/Sidebar'
 import Button from '../../components/Button'
+import DoctorProfile from '../../components/DoctorProfile'
 
 // Importar componentes del doctor
 import DoctorStats from './components/DoctorStats'
@@ -114,7 +115,7 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
     historias: TabHistorias,
     odontograma: TabOdontograma,
     tratamientos: TabTratamientos,
-    perfil: () => <div>Perfil del doctor</div>
+    perfil: DoctorProfile
   }
 
   const ComponenteActivo = TabContent[tabActiva]

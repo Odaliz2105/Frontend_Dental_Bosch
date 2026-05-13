@@ -391,23 +391,21 @@ export const AuthProvider = ({ children }) => {
 
 
   const updatePassword = async (passwordData) => {
-
-    try {
-      const response = await api.put(
-        "/api/auth/actualizar-password",
-        passwordData,
-
-      );
-
-      return { success: true, data: response.data };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.msg || "Error al actualizar contraseña",
-      };
+  try {
+    const response = await api.put(
+      "/api/auth/actualizar-password",
+      passwordData
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return {
+      success: false,
+      error: error.response?.data?.mensaje || 
+             error.response?.data?.msg || 
+             "Error al actualizar contraseña",
     }
-  };
+  }
+};
 
   const getPendingDoctors = async () => {
 
@@ -711,7 +709,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('📤 updateCitaEstado - Enviando solicitud:', { citaId, estado, motivoCancelacion, notas })
       
-      const response = await api.put(`/api/citas/${citaId}/estado`, {
+      const response = await api.put(`/api/doctores/citas/${citaId}/estado`, {
         estado,
         motivoCancelacion,
         notas
