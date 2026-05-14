@@ -14,12 +14,13 @@ import {
   XCircle
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import doctorService from '../services/doctorService'
 import api from '../services/api'
 import Button from '../components/Button'
 import Sidebar from '../components/Sidebar'
 
 const ProfilePage = () => {
-  const { user, updateUser, refreshUserData, syncDoctorData } = useAuth()
+  const { user, updateUser, refreshUserData } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
@@ -117,7 +118,10 @@ const ProfilePage = () => {
           telefono: formData.telefono,
           especialidad: formData.especialidad
         }
-        result = await syncDoctorData(doctorData)
+        result = await doctorService.updateDoctorProfile(doctorData)
+        if (result.success) {
+          await refreshUserData()
+        }
       } else {
         const response = await api.put('/api/auth/perfil', formData)
         result = { success: response.data.success }

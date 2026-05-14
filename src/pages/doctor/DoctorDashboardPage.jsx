@@ -16,13 +16,13 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import doctorService from '../../services/doctorService'
 import Sidebar from '../../components/Sidebar'
 import Button from '../../components/Button'
 import DoctorProfile from '../../components/DoctorProfile'
 
 // Importar componentes del doctor
 import DoctorStats from './components/DoctorStats'
-import QuickActions from './components/QuickActions'
 import TabCitas from './components/TabCitas'
 import TabPacientes from './components/TabPacientes'
 import TabHistorias from './components/TabHistorias'
@@ -41,7 +41,7 @@ const DOCTOR_TABS = [
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────
 const DoctorDashboardPage = ({ initialTab } = {}) => {
-  const { user, getDoctorCitas } = useAuth()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [tabActiva, setTabActiva] = useState(initialTab || 'citas')
   const [showProfile, setShowProfile] = useState(false)
@@ -73,34 +73,34 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
     setCargando(true)
     
     try {
-      // Cargar citas del doctor
-      const fechaActual = new Date()
-      const añoActual = fechaActual.getFullYear()
-      
-      const params = {
-        estado: 'pendiente',
-        desde: `${añoActual}-01-01`,
-        hasta: `${añoActual}-12-31`,
-        page: 1,
-        limit: 10
+      const hoy = new Date()
+      const hoyStr = hoy.toISOString().split('T')[0]
+
+      const [citasResult, pacientesResult] = await Promise.all([
+        doctorService.getDoctorCitas({ page: 1, limit: 50 }),
+        doctorService.getDoctorPacientes()
+      ])
+
+      let citasHoy = 0
+      let pacientesActivos = 0
+
+      if (citasResult.success) {
+        const todasCitas = citasResult.data.datos?.citas || []
+        citasHoy = todasCitas.filter(c => {
+          const fc = c.fecha ? new Date(c.fecha).toISOString().split('T')[0] : ''
+          return fc === hoyStr
+        }).length
+        pacientesActivos = new Set(todasCitas.map(c => c.paciente?.id).filter(Boolean)).size
+        setCitas(todasCitas)
       }
-      
-      const result = await getDoctorCitas(params)
-      if (result.success) {
-        const citasData = result.data.datos?.citas || []
-        setCitas(citasData)
-        
-        // Actualizar estadísticas
-        setStats(prev => ({
-          ...prev,
-          citasHoy: citasData.length,
-          pacientesActivos: new Set(citasData.map(c => c.paciente?.id)).size
-        }))
-        
-        console.log('📋 DoctorDashboard - Citas cargadas:', citasData.length)
-      } else {
-        console.error('❌ DoctorDashboard - Error al cargar citas:', result.error)
+
+      if (pacientesResult.success) {
+        const totalPacientes = (pacientesResult.data.data || []).length
+        if (totalPacientes > pacientesActivos) pacientesActivos = totalPacientes
       }
+
+      setStats({ citasHoy, pacientesActivos, historiasMes: 0, tratamientosActivos: 0 })
+
     } catch (error) {
       console.error('❌ DoctorDashboard - Error general:', error)
     } finally {
@@ -156,9 +156,6 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
         <div className="p-4 lg:p-5 w-full">
           {/* Stats Cards */}
           <DoctorStats stats={stats} loading={cargando} />
-
-          {/* Quick Actions */}
-          <QuickActions />
 
           {/* Panel con tabs */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden w-full mt-6">

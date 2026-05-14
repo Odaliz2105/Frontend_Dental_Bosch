@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, Search, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import { useAuth } from '../../../context/AuthContext'
+import doctorService from '../../../services/doctorService'
 import Button from '../../../components/Button'
 
 const EstadoBadge = ({ estado }) => {
@@ -32,6 +32,13 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
     onClose()
   }
 
+  const fechaCita = new Date(cita.fecha || cita.fechaISO)
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  fechaCita.setHours(0, 0, 0, 0)
+  const esFutura = fechaCita >= hoy
+  const esPasada = fechaCita < hoy
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -39,6 +46,9 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
       onClick={onClose}
+
+
+
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -63,7 +73,6 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
           </label>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { valor: 'confirmada', label: 'Confirmar', color: 'border-green-300 text-green-700 bg-green-50' },
               { valor: 'finalizada', label: 'Finalizar', color: 'border-blue-300 text-blue-700 bg-blue-50' },
               { valor: 'cancelada', label: 'Cancelar', color: 'border-red-300 text-red-700 bg-red-50' },
             ].map(op => (
@@ -77,6 +86,18 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
               </button>
             ))}
           </div>
+          {accion === 'finalizada' && esFutura && (
+            <p className="text-red-600 text-xs mt-2 flex items-center gap-1">
+              <AlertCircle size={12} />
+              No puedes finalizar una cita futura
+            </p>
+          )}
+          {accion === 'cancelada' && esPasada && (
+            <p className="text-red-600 text-xs mt-2 flex items-center gap-1">
+              <AlertCircle size={12} />
+              No puedes cancelar una cita del pasado
+            </p>
+          )}
         </div>
 
         {accion === 'cancelada' && (
@@ -115,7 +136,12 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
             type="button"
             onClick={handleConfirmar}
             loading={loading}
-            disabled={!accion || loading}
+            disabled={
+              !accion || 
+              loading || 
+              (accion === 'finalizada' && esFutura) ||
+              (accion === 'cancelada' && esPasada)
+            }
           >
             Confirmar
           </Button>
@@ -126,7 +152,6 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
 }
 
 const TabCitas = () => {
-  const { getDoctorCitas, updateCitaEstado } = useAuth()
   const [citas, setCitas] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -147,7 +172,7 @@ const TabCitas = () => {
     setLoading(true)
     try {
       const añoActual = new Date().getFullYear()
-      const result = await getDoctorCitas({
+      const result = await doctorService.getDoctorCitas({
         desde: `${añoActual}-01-01`,
         hasta: `${añoActual}-12-31`,
         page: 1,
@@ -164,7 +189,7 @@ const TabCitas = () => {
   }
 
   const handleActualizarEstado = async (citaId, estado, motivoCancelacion, notas) => {
-    const result = await updateCitaEstado(citaId, estado, motivoCancelacion, notas)
+    const result = await doctorService.updateCitaEstado(citaId, estado, motivoCancelacion, notas)
     if (result.success) {
       mostrarToast(`✅ Cita ${estado} correctamente`)
       await cargarCitas()
@@ -234,6 +259,7 @@ const TabCitas = () => {
             onChange={e => setBusqueda(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-transparent text-sm"
           />
+          
         </div>
 
         <select

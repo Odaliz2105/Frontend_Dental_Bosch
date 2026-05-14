@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Phone, Clock, X, Edit2, Trash2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import doctorService from '../../services/doctorService'
 import EstadoBadge from '../common/EstadoBadge'
 import Button from '../Button'
 
@@ -10,7 +11,7 @@ const ModalDetalle = ({ doctor, onClose, onUpdate }) => {
   const [horarioForm, setHorarioForm] = useState([])
   const [loadingHorario, setLoadingHorario] = useState(false)
   const [doctorCompleto, setDoctorCompleto] = useState(doctor)
-  const { updateDoctorHorario, getDoctorById } = useAuth()
+  const { getDoctorById } = useAuth()
 
   // Función para mostrar toast local
   const mostrarToastLocal = (msg, tipo = 'success') => {
@@ -90,7 +91,7 @@ const ModalDetalle = ({ doctor, onClose, onUpdate }) => {
     
     setLoadingHorario(true)
     try {
-      const result = await updateDoctorHorario(doctorCompleto._id, horarioForm)
+      const result = await doctorService.updateDoctorHorario(doctorCompleto._id, horarioForm)
       if (result.success) {
         mostrarToastLocal('✅ Horario actualizado exitosamente')
         setEditandoHorario(false)

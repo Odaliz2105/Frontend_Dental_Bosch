@@ -216,96 +216,35 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = async (userData, file = null) => {
-
     try {
-
       let response;
 
-      // Limpiar datos vacíos para evitar problemas en el backend
       const cleanData = {};
-
       Object.keys(userData).forEach((key) => {
-
-        if (
-          userData[key] !== null &&
-          userData[key] !== undefined &&
-          userData[key] !== ""
-
-        ) {
-
+        if (userData[key] !== null && userData[key] !== undefined && userData[key] !== "") {
           cleanData[key] = userData[key];
         }
-
       });
 
       if (file) {
-
         const formData = new FormData();
-
-        Object.keys(cleanData).forEach((key) => {
-
-          formData.append(key, cleanData[key]);
-
-        });
-
+        Object.keys(cleanData).forEach((key) => formData.append(key, cleanData[key]));
         formData.append("foto", file);
-
-        // Usar endpoint específico según el rol
-
-        if (user?.rol === "doctor") {
-          response = await api.put("/api/doctores/perfil/doctor", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-        } else {
-
-          response = await api.put("/api/auth/perfil", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-        }
-
+        response = await api.put("/api/auth/perfil", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-
-        // Usar endpoint específico según el rol - solo enviar datos limpios sin foto
-
-        if (user?.rol === "doctor") {
-          response = await api.put("/api/doctores/perfil/doctor", cleanData);
-        } else {
-
-          response = await api.put("/api/auth/perfil", cleanData);
-        }
-
+        response = await api.put("/api/auth/perfil", cleanData);
       }
 
-      // 🔥 Actualizar el usuario con la respuesta del backend
-
       const updatedUser = response.data.data || response.data.usuario;
-
-      setUser((prev) => ({
-
-        ...prev,
-
-        ...updatedUser,
-
-      }));
-
+      setUser((prev) => ({ ...prev, ...updatedUser }));
 
       return { success: true, data: response.data };
-
     } catch (error) {
-
       return {
-
         success: false,
-
-        error:
-
-          error.response?.data?.mensaje ||
-
-          error.response?.data?.msg ||
-
-          "Error al actualizar perfil",
+        error: error.response?.data?.mensaje || error.response?.data?.msg || "Error al actualizar perfil",
       };
     }
   };
@@ -347,47 +286,6 @@ export const AuthProvider = ({ children }) => {
 
   };
 
-
-
-  // 🔥 Función para sincronizar datos del doctor
-
-  const syncDoctorData = async (userData) => {
-
-    try {
-
-      // 1. Actualizar en el endpoint específico de doctores
-
-      const response = await api.put("/api/doctores/perfil/doctor", userData);
-      
-      // 2. Actualizar el estado del usuario con la respuesta
-
-      if (response.data.usuario) {
-
-        setUser((prev) => ({
-
-          ...prev,
-          ...response.data.usuario,
-        }));
-      }
-
-      // 3. Refrescar datos del usuario para asegurar persistencia
-
-      await refreshUserData();
-
-      return { success: true };
-
-    } catch (error) {
-
-      console.error("Error sincronizando datos del doctor:", error);
-
-      return { 
-
-        success: false, 
-
-        error: error.response?.data?.mensaje || "Error al sincronizar datos" 
-      };
-    }
-  };
 
 
   const updatePassword = async (passwordData) => {
@@ -684,79 +582,6 @@ export const AuthProvider = ({ children }) => {
 
   }
 
-  const getDoctorCitas = async (params = {}) => {
-    try {
-      const queryParams = new URLSearchParams(params).toString()
-      const url = queryParams ? `/api/citas/doctor?${queryParams}` : '/api/citas/doctor'
-      
-      console.log('📤 getDoctorCitas - Enviando solicitud:', url)
-      
-      const response = await api.get(url)
-      
-      console.log('📥 getDoctorCitas - Respuesta del backend:', response.data)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ getDoctorCitas - Error:', error.response?.data)
-      return {
-        success: false,
-        error: error.response?.data?.mensaje || 'Error al obtener citas del doctor'
-      }
-    }
-  }
-
-  const updateCitaEstado = async (citaId, estado, motivoCancelacion = '', notas = '') => {
-    try {
-      console.log('📤 updateCitaEstado - Enviando solicitud:', { citaId, estado, motivoCancelacion, notas })
-      
-      const response = await api.put(`/api/doctores/citas/${citaId}/estado`, {
-        estado,
-        motivoCancelacion,
-        notas
-      })
-      
-      console.log('📥 updateCitaEstado - Respuesta del backend:', response.data)
-      
-      return { success: true, data: response.data }
-    } catch (error) {
-      console.error('❌ updateCitaEstado - Error:', error.response?.data)
-      return {
-        success: false,
-        error: error.response?.data?.mensaje || 'Error al actualizar estado de la cita'
-      }
-    }
-  }
-
-  const updateDoctorHorario = async (doctorId, horarioAtencion) => {
-
-    try {
-
-      console.log('📤 updateDoctorHorario - Enviando al backend:', { doctorId, horarioAtencion })
-
-      const response = await api.put(`/api/doctores/${doctorId}`, { horarioAtencion })
-
-      console.log('📥 updateDoctorHorario - Respuesta del backend:', response.data)
-
-      return { success: true, data: response.data }
-
-    } catch (error) {
-
-      console.error('❌ updateDoctorHorario - Error:', error.response?.data)
-
-      return {
-
-        success: false,
-
-        error: error.response?.data?.mensaje || 'Error al actualizar horario'
-
-      }
-
-    }
-
-  }
-
-
-
   const getAdminPacienteById = async (id) => {
 
     try {
@@ -804,56 +629,6 @@ export const AuthProvider = ({ children }) => {
   }
 
   
-
-  const getDoctorProfile = async () => {
-
-    try {
-
-      const response = await api.get("/api/doctores/perfil/doctor");
-
-      return { success: true, data: response.data };
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        error: error.response?.data?.msg || "Error al obtener perfil de doctor",
-
-      };
-
-    }
-
-  };
-
-
-
-  const updateDoctorProfile = async (userData) => {
-
-    try {
-
-      const response = await api.put("/api/doctores/perfil/doctor", userData);
-
-      return { success: true, data: response.data };
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        error:
-
-          error.response?.data?.msg || "Error al actualizar perfil de doctor",
-
-      };
-
-    }
-
-  };
-
-
 
   // Configurar Axios para incluir token si existe
 
@@ -1110,8 +885,6 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-
-
   const value = {
 
     user,
@@ -1133,8 +906,6 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
 
     refreshUserData,
-
-    syncDoctorData,
 
     getPendingDoctors,
 
@@ -1158,10 +929,6 @@ export const AuthProvider = ({ children }) => {
 
     getAdminPacientes,
 
-    getDoctorCitas,
-
-    updateCitaEstado,
-
     getAdminPacienteById,
 
     getAdminUsers,
@@ -1169,12 +936,6 @@ export const AuthProvider = ({ children }) => {
     deleteAdminPaciente,
 
     reasignarCitas,
-
-    updateDoctorHorario,
-
-    getDoctorProfile,
-
-    updateDoctorProfile,
 
     getAdminEstadisticas,
 

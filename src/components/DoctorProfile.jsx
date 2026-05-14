@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import doctorService from '../services/doctorService'
 import Input from './Input'
 import Button from './Button'
 
 const DoctorProfile = () => {
-  const { user, syncDoctorData, getDoctorProfile, updatePassword } = useAuth()
+  const { user, updatePassword, refreshUserData } = useAuth()
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -42,7 +43,7 @@ const DoctorProfile = () => {
   // Carga especialidad desde el perfil del doctor
   useEffect(() => {
     const cargarEspecialidad = async () => {
-      const result = await getDoctorProfile()
+      const result = await doctorService.getDoctorProfile()
       if (result.success) {
         const especialidad =
           result.data.data?.especialidad ||
@@ -67,8 +68,9 @@ const DoctorProfile = () => {
     setSuccess('')
 
     try {
-      const result = await syncDoctorData(formData)
+      const result = await doctorService.updateDoctorProfile(formData)
       if (result.success) {
+        await refreshUserData()
         setSuccess('✅ Perfil actualizado correctamente')
         setIsEditing(false)
       } else {
