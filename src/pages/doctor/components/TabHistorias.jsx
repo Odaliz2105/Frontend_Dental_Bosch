@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Search, ChevronDown, ChevronUp,
   Calendar, User, Plus, AlertCircle, Clock,
-  Stethoscope, Activity, Edit2
+  Stethoscope, Activity, Edit2, CalendarPlus, X
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import doctorService from '../../../services/doctorService'
@@ -23,8 +23,67 @@ const TipoBadge = ({ tipo }) => (
 )
 
 // ── DETALLE EXPANDIBLE DE CONSULTA ────────────────────────
-const DetalleConsulta = ({ consulta, onEdit }) => {
+const DetalleConsulta = ({ consulta, onEdit, pacienteId }) => {
   const [expandido, setExpandido] = useState(false)
+  const [odontogramaDetalle, setOdontogramaDetalle] = useState(null)
+  const [cargandoOdontogramaDetalle, setCargandoOdontogramaDetalle] = useState(false)
+  const [dienteEditando, setDienteEditando] = useState(null)
+  const [actualizandoDienteDetalle, setActualizandoDienteDetalle] = useState(false)
+  const [errorOdontogramaDetalle, setErrorOdontogramaDetalle] = useState(null)
+
+  const cargarOdontogramaDetalle = async () => {
+    setCargandoOdontogramaDetalle(true)
+    const result = await doctorService.verOdontograma(pacienteId, consulta._id)
+    const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
+    if (result.success && odontogramaData) {
+      setOdontogramaDetalle(odontogramaData)
+      setErrorOdontogramaDetalle(null)
+    } else {
+      setOdontogramaDetalle(null)
+      if (!result.success) {
+        setErrorOdontogramaDetalle(result.error || 'Error al cargar odontograma')
+      }
+    }
+    setCargandoOdontogramaDetalle(false)
+  }
+
+  const handleActualizarDienteDetalle = async (diente, nuevoEstado) => {
+    setActualizandoDienteDetalle(true)
+    const result = await doctorService.actualizarDienteOdontograma(
+      pacienteId, consulta._id, diente.codigoFDI, { estadoGeneral: nuevoEstado }
+    )
+    if (result.success) {
+      setOdontogramaDetalle(prev => ({
+        ...prev,
+        dientes: prev.dientes.map(d =>
+          d._id === diente._id ? { ...d, estadoGeneral: nuevoEstado } : d
+        )
+      }))
+    }
+    setActualizandoDienteDetalle(false)
+    setDienteEditando(null)
+  }
+
+  const handleInicializarOdontogramaDetalle = async (tipo) => {
+    setCargandoOdontogramaDetalle(true)
+    setErrorOdontogramaDetalle(null)
+    const result = await doctorService.inicializarOdontograma(pacienteId, consulta._id, tipo)
+    const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
+    if (result.success && odontogramaData) {
+      setOdontogramaDetalle(odontogramaData)
+    } else {
+      setErrorOdontogramaDetalle(result.error || 'Error al inicializar odontograma')
+    }
+    setCargandoOdontogramaDetalle(false)
+  }
+
+  useEffect(() => {
+    if (expandido && consulta._id && pacienteId) {
+      cargarOdontogramaDetalle()
+    } else if (!expandido) {
+      setOdontogramaDetalle(null)
+    }
+  }, [expandido, consulta._id, pacienteId])
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -382,6 +441,179 @@ const DetalleConsulta = ({ consulta, onEdit }) => {
                   </div>
                 </div>
               )}
+
+              {/* Odontograma */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Odontograma
+                </p>
+                {errorOdontogramaDetalle && (
+                  <div className="mb-2 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                    {errorOdontogramaDetalle}
+                  </div>
+                )}
+                {cargandoOdontogramaDetalle ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Cargando odontograma...
+                  </div>
+                ) : !odontogramaDetalle ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-400">Esta consulta no tiene odontograma.</p>
+                    <div className="flex gap-2">
+                      {['permanente', 'temporal', 'mixta'].map(tipo => (
+                        <button
+                          key={tipo}
+                          type="button"
+                          onClick={() => handleInicializarOdontogramaDetalle(tipo)}
+                          className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors capitalize"
+                        >
+                          Inicializar {tipo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          {odontogramaDetalle.tipoDenticion}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {odontogramaDetalle.dientes?.length || 0} dientes
+                        </span>
+                      </div>
+
+                      {odontogramaDetalle.tipoDenticion === 'mixta' ? (
+                        <>
+                          <div className="mb-6">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                              Dientes Permanentes
+                            </p>
+                            <div className="grid grid-cols-8 gap-1.5">
+                              {odontogramaDetalle.dientes.slice(0, 32).map((diente) => (
+                                <button
+                                  key={diente._id}
+                                  type="button"
+                                  onClick={() => setDienteEditando(diente)}
+                                  className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
+                                    ${dienteEditando?._id === diente._id
+                                      ? 'border-primary ring-1 ring-primary/30'
+                                      : 'border-gray-200 hover:border-primary/50'
+                                    }
+                                    ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
+                                  `}
+                                >
+                                  <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
+                                  <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                              Dientes Temporales
+                            </p>
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {odontogramaDetalle.dientes.slice(32).map((diente) => (
+                                <button
+                                  key={diente._id}
+                                  type="button"
+                                  onClick={() => setDienteEditando(diente)}
+                                  className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
+                                    ${dienteEditando?._id === diente._id
+                                      ? 'border-primary ring-1 ring-primary/30'
+                                      : 'border-gray-200 hover:border-primary/50'
+                                    }
+                                    ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
+                                  `}
+                                >
+                                  <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
+                                  <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className={`grid ${odontogramaDetalle.tipoDenticion === 'temporal' ? 'grid-cols-5' : 'grid-cols-8'} gap-1.5`}>
+                          {odontogramaDetalle.dientes.map((diente) => (
+                            <button
+                              key={diente._id}
+                              type="button"
+                              onClick={() => setDienteEditando(diente)}
+                              className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
+                                ${dienteEditando?._id === diente._id
+                                  ? 'border-primary ring-1 ring-primary/30'
+                                  : 'border-gray-200 hover:border-primary/50'
+                                }
+                                ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
+                              `}
+                            >
+                              <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
+                              <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                )}
+              </div>
+
+              {/* Modal editar diente */}
+              <AnimatePresence>
+                {dienteEditando && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+                    onClick={() => setDienteEditando(null)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.95, opacity: 0 }}
+                      className="bg-white rounded-xl p-6 w-full max-w-md"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-gray-900">
+                          Diente {dienteEditando.codigoFDI}
+                        </h3>
+                        <button onClick={() => setDienteEditando(null)} className="text-gray-400 hover:text-gray-600">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Estado General
+                          </label>
+                          <select
+                            defaultValue={dienteEditando.estadoGeneral}
+                            onChange={(e) => handleActualizarDienteDetalle(dienteEditando, e.target.value)}
+                            disabled={actualizandoDienteDetalle}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          >
+                            <option value="SANO">Sano</option>
+                            <option value="CARIES">Caries</option>
+                            <option value="FRACTURA">Fractura</option>
+                            <option value="AUSENTE">Ausente</option>
+                            <option value="PROTESIS">Prótesis</option>
+                            <option value="OBTURACION">Obturación</option>
+                            <option value="ENDODONCIA">Endodoncia</option>
+                            <option value="EXTRACCION">Extracción</option>
+                          </select>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Estado actual: <span className="font-medium">{dienteEditando.estadoGeneral}</span>
+                        </p>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
@@ -391,8 +623,8 @@ const DetalleConsulta = ({ consulta, onEdit }) => {
 }
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────
-const TabHistorias = () => {
-  const { getAdminPacientes } = useAuth()
+const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCita, onLimpiarPaciente }) => {
+  const { getAdminPacientes, user } = useAuth()
 
   const [pacientes, setPacientes] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -406,6 +638,15 @@ const TabHistorias = () => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarDetallePaciente, setMostrarDetallePaciente] = useState(false)
   const [editandoConsulta, setEditandoConsulta] = useState(null)
+  const [autoSeleccionando, setAutoSeleccionando] = useState(false)
+  const [mostrarAgendarCita, setMostrarAgendarCita] = useState(false)
+  const [agendandoCita, setAgendandoCita] = useState(false)
+  const [formCita, setFormCita] = useState({
+    fecha: '',
+    horaInicio: '',
+    horaFin: '',
+    motivo: 'Control post tratamiento'
+  })
 
   const handleEditConsulta = (consulta) => {
     setEditandoConsulta(consulta)
@@ -424,6 +665,35 @@ const TabHistorias = () => {
     }
   }
 
+  const handleAgendarCita = async (e) => {
+    e.preventDefault()
+    if (!formCita.fecha || !formCita.horaInicio || !formCita.horaFin) {
+      mostrarToast('Completa todos los campos de fecha y hora', 'error')
+      return
+    }
+
+    setAgendandoCita(true)
+    const result = await doctorService.crearCitaDoctor({
+      paciente: pacienteSeleccionado._id,
+      fecha: formCita.fecha,
+      horaInicio: formCita.horaInicio,
+      horaFin: formCita.horaFin,
+      motivo: formCita.motivo
+    })
+
+    if (result.success) {
+      mostrarToast('✅ Cita de seguimiento agendada correctamente')
+      setMostrarAgendarCita(false)
+      setFormCita({ fecha: '', horaInicio: '', horaFin: '', motivo: 'Control post tratamiento' })
+    } else {
+      const msg = result.status === 409
+        ? 'El paciente ya fue atendido hoy. Agenda para una fecha posterior.'
+        : result.error || 'Error al agendar cita'
+      mostrarToast(msg, 'error')
+    }
+    setAgendandoCita(false)
+  }
+
   const mostrarToast = (msg, tipo = 'success') => {
     setToast({ msg, tipo })
     setTimeout(() => setToast(null), 3000)
@@ -435,32 +705,75 @@ const TabHistorias = () => {
       setCargandoPacientes(true)
       const result = await doctorService.getDoctorPacientes()
       if (result.success) {
-        setPacientes(result.data.data || [])
+        const data = result.data.data || []
+        setPacientes(data)
+
+        if (pacienteSeleccionadoId) {
+          const encontrado = data.find(p =>
+            p._id === pacienteSeleccionadoId || p.id === pacienteSeleccionadoId ||
+            p.usuario?._id === pacienteSeleccionadoId
+          )
+          if (encontrado) {
+            setAutoSeleccionando(true)
+            setPacienteSeleccionado(encontrado)
+          }
+        }
       }
       setCargandoPacientes(false)
     }
     cargarPacientes()
   }, [])
 
-  // Cargar historial cuando se selecciona un paciente
-  const seleccionarPaciente = async (paciente) => {
-    setPacienteSeleccionado(paciente)
-    setHistorial(null)
-    setSinHistorial(false)
-    setCargandoHistorial(true)
+  // Auto-seleccionar paciente cuando llega desde "Atender"
+  useEffect(() => {
+    if (!pacienteSeleccionadoId || pacientes.length === 0) return
 
-    const result = await doctorService.getHistorialClinico(paciente._id)
+    const encontrado = pacientes.find(p =>
+      p._id === pacienteSeleccionadoId || p.id === pacienteSeleccionadoId ||
+      p.usuario?._id === pacienteSeleccionadoId
+    )
 
-    if (result.success) {
-      setHistorial(result.data.datos)
+    if (encontrado && (!pacienteSeleccionado || pacienteSeleccionado._id !== encontrado._id)) {
+      setAutoSeleccionando(true)
+      setPacienteSeleccionado(encontrado)
+    }
+  }, [pacienteSeleccionadoId, pacientes])
+
+  // Cargar historial automáticamente cuando se selecciona paciente
+  useEffect(() => {
+    if (!pacienteSeleccionado) return
+
+    const cargarHistorial = async () => {
+      setHistorial(null)
       setSinHistorial(false)
-    } else if (result.status === 404) {
-      setSinHistorial(true)
-    } else {
-      mostrarToast(result.error || 'Error al cargar historial', 'error')
+      setCargandoHistorial(true)
+
+      const result = await doctorService.getHistorialClinico(pacienteSeleccionado._id)
+
+      if (result.success) {
+        setHistorial(result.data.datos)
+        setSinHistorial(false)
+
+        if (autoSeleccionando) {
+          setAutoSeleccionando(false)
+        }
+      } else if (result.status === 404) {
+        setSinHistorial(true)
+        setAutoSeleccionando(false)
+      } else {
+        mostrarToast(result.error || 'Error al cargar historial', 'error')
+        setAutoSeleccionando(false)
+      }
+
+      setCargandoHistorial(false)
     }
 
-    setCargandoHistorial(false)
+    cargarHistorial()
+  }, [pacienteSeleccionado])
+
+  const seleccionarPaciente = (paciente) => {
+    if (onLimpiarPaciente) onLimpiarPaciente()
+    setPacienteSeleccionado(paciente)
   }
 
   const handleCrearHistorial = async () => {
@@ -507,12 +820,103 @@ const TabHistorias = () => {
         />
       )}
 
+      {/* Modal agendar cita de seguimiento */}
+      {mostrarAgendarCita && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setMostrarAgendarCita(false) }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <CalendarPlus size={20} className="text-primary" />
+                Agendar cita de seguimiento
+              </h2>
+              <button onClick={() => setMostrarAgendarCita(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Paciente: <span className="font-semibold">{pacienteSeleccionado?.nombre} {pacienteSeleccionado?.apellido}</span>
+            </p>
+
+            <form onSubmit={handleAgendarCita} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  value={formCita.fecha}
+                  onChange={e => setFormCita({ ...formCita, fecha: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora inicio</label>
+                  <input
+                    type="time"
+                    value={formCita.horaInicio}
+                    onChange={e => setFormCita({ ...formCita, horaInicio: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora fin</label>
+                  <input
+                    type="time"
+                    value={formCita.horaFin}
+                    onChange={e => setFormCita({ ...formCita, horaFin: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+                <input
+                  type="text"
+                  value={formCita.motivo}
+                  onChange={e => setFormCita({ ...formCita, motivo: e.target.value })}
+                  placeholder="Ej: Control post tratamiento"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setMostrarAgendarCita(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" loading={agendandoCita} disabled={agendandoCita}>
+                  <CalendarPlus size={16} className="mr-1.5" />
+                  Agendar cita
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+
       {/* Modal de nueva consulta / edición */}
       {mostrarFormulario && (
         <FormularioConsulta
           pacienteId={pacienteSeleccionado._id}
           pacienteNombre={`${pacienteSeleccionado.nombre} ${pacienteSeleccionado.apellido}`}
           consultaEdit={editandoConsulta}
+          citaId={citaId}
+          motivoCita={motivoCita}
           onClose={() => { setMostrarFormulario(false); setEditandoConsulta(null) }}
           onSuccess={handleConsultaCreada}
         />
@@ -671,14 +1075,27 @@ const TabHistorias = () => {
                   <Clock size={16} className="text-primary" />
                   Consultas ({historial.consultas?.length || 0})
                 </h3>
-                <Button
-                  variant="primary"
-                  size="small"
-                  onClick={handleNuevaConsulta}
-                >
-                  <Plus size={14} className="mr-1" />
-                  Nueva Consulta
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => {
+                      setFormCita(prev => ({ ...prev, fecha: new Date().toISOString().split('T')[0] }))
+                      setMostrarAgendarCita(true)
+                    }}
+                  >
+                    <CalendarPlus size={14} className="mr-1" />
+                    Agendar cita
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="small"
+                    onClick={handleNuevaConsulta}
+                  >
+                    <Plus size={14} className="mr-1" />
+                    Nueva Consulta
+                  </Button>
+                </div>
               </div>
 
               {!historial.consultas || historial.consultas.length === 0 ? (
@@ -697,7 +1114,7 @@ const TabHistorias = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                       >
-                        <DetalleConsulta consulta={consulta} onEdit={handleEditConsulta} />
+                        <DetalleConsulta consulta={consulta} onEdit={handleEditConsulta} pacienteId={pacienteSeleccionado._id} />
                       </motion.div>
                     ))
                   }

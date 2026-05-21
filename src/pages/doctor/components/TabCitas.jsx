@@ -151,7 +151,7 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
   )
 }
 
-const TabCitas = () => {
+const TabCitas = ({ onAtender }) => {
   const [citas, setCitas] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -320,12 +320,22 @@ const TabCitas = () => {
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <EstadoBadge estado={cita.estado} />
                     {estadoValor !== 'finalizada' && estadoValor !== 'cancelada' && (
-                      <button
-                        onClick={() => setCitaSeleccionada(cita)}
-                        className="text-xs text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/30 transition-colors"
-                      >
-                        Actualizar estado
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            if (onAtender) onAtender(cita)
+                          }}
+                          className="text-xs text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 transition-colors font-medium"
+                        >
+                          Atender
+                        </button>
+                        <button
+                          onClick={() => setCitaSeleccionada(cita)}
+                          className="text-xs text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/30 transition-colors"
+                        >
+                          Estado
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

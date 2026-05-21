@@ -27,7 +27,6 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab, statSolicitudes =
 
   const doctorMenuItems = [
     { title: 'Mis Citas', tab: 'citas', icon: Calendar },
-    { title: 'Mis Pacientes', tab: 'pacientes', icon: Users },
     { title: 'Historias Clínicas', tab: 'historias', icon: FileText },
     { title: 'Odontograma', tab: 'odontograma', icon: Activity },
     { title: 'Tratamientos', tab: 'tratamientos', icon: Heart },

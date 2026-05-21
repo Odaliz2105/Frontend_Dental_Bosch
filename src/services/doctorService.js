@@ -1,11 +1,13 @@
 import api from './api'
 
 const handleError = (error) => {
+  console.error('Error detallado:', error.response?.data)
   const msg = error.response?.data?.mensaje ||
     error.response?.data?.msg ||
     error.response?.data?.error ||
+    error.response?.data?.message ||
     'Error en la comunicación con el servidor'
-  return { success: false, error: msg }
+  return { success: false, error: msg, status: error.response?.status }
 }
 
 // ── PACIENTES ──────────────────────────────────────────
@@ -40,6 +42,23 @@ export const updateCitaEstado = async (citaId, estado, motivoCancelacion = '', n
     return { success: true, data: response.data }
   } catch (error) {
     return handleError(error)
+  }
+}
+
+// ── CREAR CITA (DOCTOR) ─────────────────────────────────
+export const crearCitaDoctor = async (citaData) => {
+  try {
+    const response = await api.post('/api/doctores/citas', citaData)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return {
+      success: false,
+      status: error.response?.status,
+      error: error.response?.data?.mensaje ||
+        error.response?.data?.msg ||
+        error.response?.data?.error ||
+        'Error al crear cita'
+    }
   }
 }
 
@@ -162,10 +181,104 @@ export const eliminarHistorial = async (pacienteId) => {
   }
 }
 
+export const inicializarOdontograma = async (pacienteId, consultaId, tipoDenticion) => {
+  try {
+    const response = await api.post(
+      `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma/inicializar`,
+      { tipoDenticion }
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const verOdontograma = async (pacienteId, consultaId) => {
+  try {
+    const response = await api.get(
+      `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma`
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const actualizarDienteOdontograma = async (pacienteId, consultaId, numeroDiente, datosActualizacion) => {
+  try {
+    const response = await api.put(
+      `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma/diente/${numeroDiente}`,
+      datosActualizacion
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+// ── TRATAMIENTOS ─────────────────────────────────────────
+export const getTratamientosPaciente = async (pacienteId) => {
+  try {
+    const response = await api.get(`/api/tratamientos/paciente/${pacienteId}`)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const crearTratamiento = async (pacienteId, data) => {
+  try {
+    const response = await api.post(`/api/tratamientos/paciente/${pacienteId}`, data)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const actualizarTratamiento = async (tratamientoId, data) => {
+  try {
+    const response = await api.put(`/api/tratamientos/${tratamientoId}`, data)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const eliminarTratamiento = async (tratamientoId) => {
+  try {
+    const response = await api.delete(`/api/tratamientos/${tratamientoId}`)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const getDetalleTratamiento = async (pacienteId, consultaId, sesion) => {
+  try {
+    const response = await api.get(`/api/tratamientos/paciente/${pacienteId}/consulta/${consultaId}/sesion/${sesion}`)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
+export const actualizarObservacionesGenerales = async (pacienteId, consultaId, observacionesGenerales) => {
+  try {
+    const response = await api.put(
+      `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma/observaciones`,
+      { observacionesGenerales }
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
 const doctorService = {
   getDoctorPacientes,
   getDoctorCitas,
   updateCitaEstado,
+  crearCitaDoctor,
   getDoctorProfile,
   updateDoctorProfile,
   updateDoctorHorario,
@@ -178,6 +291,15 @@ const doctorService = {
   actualizarConsulta,
   eliminarConsulta,
   eliminarHistorial,
+  inicializarOdontograma,
+  verOdontograma,
+  actualizarDienteOdontograma,
+  actualizarObservacionesGenerales,
+  getTratamientosPaciente,
+  crearTratamiento,
+  actualizarTratamiento,
+  eliminarTratamiento,
+  getDetalleTratamiento,
 }
 
 export default doctorService
