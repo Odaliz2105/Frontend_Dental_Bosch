@@ -3,13 +3,64 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Search, ChevronDown, ChevronUp,
   Calendar, User, Plus, AlertCircle, Clock,
-  Stethoscope, Activity, Edit2, CalendarPlus, X
+  Stethoscope, Activity, CalendarPlus, X
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import doctorService from '../../../services/doctorService'
 import Button from '../../../components/Button'
 import FormularioConsulta from './FormularioConsulta'
 import ModalDetallePaciente from './ModalDetallePaciente'
+import OdontogramaVisual from '../../../components/OdontogramaVisual'
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+const DURACION_BLOQUE_MINUTOS = 30
+
+const timeToMinutes = (time) => {
+  if (!time) return NaN
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+const minutesToTime = (totalMinutes) => {
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+  const minutes = String(totalMinutes % 60).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+const obtenerHorarioAtencion = (profileData) => {
+  const data = profileData?.data || profileData?.datos || profileData?.doctor || profileData
+  return data?.horarioAtencion || data?.usuario?.doctor?.horarioAtencion || []
+}
+
+const generarBloquesHorario = (horarioDia, citasDia = []) => {
+  if (!horarioDia?.disponible || !horarioDia?.horaInicio || !horarioDia?.horaFin) return []
+
+  const inicio = timeToMinutes(horarioDia.horaInicio)
+  const fin = timeToMinutes(horarioDia.horaFin)
+  const citasOcupadas = citasDia
+    .filter(cita => !['cancelada', 'cancelado'].includes(String(cita.estado || '').toLowerCase()))
+    .map(cita => ({
+      inicio: timeToMinutes(cita.horaInicio || cita.hora),
+      fin: timeToMinutes(cita.horaFin || cita.horaInicio || cita.hora)
+    }))
+    .filter(cita => Number.isFinite(cita.inicio) && Number.isFinite(cita.fin))
+
+  const bloques = []
+  for (let minuto = inicio; minuto + DURACION_BLOQUE_MINUTOS <= fin; minuto += DURACION_BLOQUE_MINUTOS) {
+    const bloqueInicio = minuto
+    const bloqueFin = minuto + DURACION_BLOQUE_MINUTOS
+    const ocupado = citasOcupadas.some(cita => bloqueInicio < cita.fin && bloqueFin > cita.inicio)
+
+    if (!ocupado) {
+      bloques.push({
+        horaInicio: minutesToTime(bloqueInicio),
+        horaFin: minutesToTime(bloqueFin)
+      })
+    }
+  }
+
+  return bloques
+}
 
 // ── BADGE TIPO DIAGNÓSTICO ────────────────────────────────
 const TipoBadge = ({ tipo }) => (
@@ -23,18 +74,16 @@ const TipoBadge = ({ tipo }) => (
 )
 
 // ── DETALLE EXPANDIBLE DE CONSULTA ────────────────────────
-const DetalleConsulta = ({ consulta, onEdit, pacienteId }) => {
+const DetalleConsulta = ({ consulta, pacienteId }) => {
   const [expandido, setExpandido] = useState(false)
   const [odontogramaDetalle, setOdontogramaDetalle] = useState(null)
   const [cargandoOdontogramaDetalle, setCargandoOdontogramaDetalle] = useState(false)
-  const [dienteEditando, setDienteEditando] = useState(null)
-  const [actualizandoDienteDetalle, setActualizandoDienteDetalle] = useState(false)
   const [errorOdontogramaDetalle, setErrorOdontogramaDetalle] = useState(null)
 
   const cargarOdontogramaDetalle = async () => {
     setCargandoOdontogramaDetalle(true)
-    const result = await doctorService.verOdontograma(pacienteId, consulta._id)
-    const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
+    const result = await doctorService.verOdontogramaVisual(pacienteId, consulta._id)
+    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma
     if (result.success && odontogramaData) {
       setOdontogramaDetalle(odontogramaData)
       setErrorOdontogramaDetalle(null)
@@ -43,36 +92,6 @@ const DetalleConsulta = ({ consulta, onEdit, pacienteId }) => {
       if (!result.success) {
         setErrorOdontogramaDetalle(result.error || 'Error al cargar odontograma')
       }
-    }
-    setCargandoOdontogramaDetalle(false)
-  }
-
-  const handleActualizarDienteDetalle = async (diente, nuevoEstado) => {
-    setActualizandoDienteDetalle(true)
-    const result = await doctorService.actualizarDienteOdontograma(
-      pacienteId, consulta._id, diente.codigoFDI, { estadoGeneral: nuevoEstado }
-    )
-    if (result.success) {
-      setOdontogramaDetalle(prev => ({
-        ...prev,
-        dientes: prev.dientes.map(d =>
-          d._id === diente._id ? { ...d, estadoGeneral: nuevoEstado } : d
-        )
-      }))
-    }
-    setActualizandoDienteDetalle(false)
-    setDienteEditando(null)
-  }
-
-  const handleInicializarOdontogramaDetalle = async (tipo) => {
-    setCargandoOdontogramaDetalle(true)
-    setErrorOdontogramaDetalle(null)
-    const result = await doctorService.inicializarOdontograma(pacienteId, consulta._id, tipo)
-    const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
-    if (result.success && odontogramaData) {
-      setOdontogramaDetalle(odontogramaData)
-    } else {
-      setErrorOdontogramaDetalle(result.error || 'Error al inicializar odontograma')
     }
     setCargandoOdontogramaDetalle(false)
   }
@@ -399,20 +418,6 @@ const DetalleConsulta = ({ consulta, onEdit, pacienteId }) => {
                 </div>
               )}
 
-              {/* Botón editar */}
-              {onEdit && (
-                <div className="border-t border-gray-100 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(consulta)}
-                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-dark transition-colors"
-                  >
-                    <Edit2 size={13} />
-                    Editar consulta
-                  </button>
-                </div>
-              )}
-
               {/* Antecedentes relevantes */}
               {consulta.antecedentes && (
                 <div>
@@ -458,162 +463,15 @@ const DetalleConsulta = ({ consulta, onEdit, pacienteId }) => {
                     Cargando odontograma...
                   </div>
                 ) : !odontogramaDetalle ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-gray-400">Esta consulta no tiene odontograma.</p>
-                    <div className="flex gap-2">
-                      {['permanente', 'temporal', 'mixta'].map(tipo => (
-                        <button
-                          key={tipo}
-                          type="button"
-                          onClick={() => handleInicializarOdontogramaDetalle(tipo)}
-                          className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors capitalize"
-                        >
-                          Inicializar {tipo}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                          {odontogramaDetalle.tipoDenticion}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {odontogramaDetalle.dientes?.length || 0} dientes
-                        </span>
-                      </div>
-
-                      {odontogramaDetalle.tipoDenticion === 'mixta' ? (
-                        <>
-                          <div className="mb-6">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                              Dientes Permanentes
-                            </p>
-                            <div className="grid grid-cols-8 gap-1.5">
-                              {odontogramaDetalle.dientes.slice(0, 32).map((diente) => (
-                                <button
-                                  key={diente._id}
-                                  type="button"
-                                  onClick={() => setDienteEditando(diente)}
-                                  className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
-                                    ${dienteEditando?._id === diente._id
-                                      ? 'border-primary ring-1 ring-primary/30'
-                                      : 'border-gray-200 hover:border-primary/50'
-                                    }
-                                    ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
-                                  `}
-                                >
-                                  <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
-                                  <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                              Dientes Temporales
-                            </p>
-                            <div className="grid grid-cols-5 gap-1.5">
-                              {odontogramaDetalle.dientes.slice(32).map((diente) => (
-                                <button
-                                  key={diente._id}
-                                  type="button"
-                                  onClick={() => setDienteEditando(diente)}
-                                  className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
-                                    ${dienteEditando?._id === diente._id
-                                      ? 'border-primary ring-1 ring-primary/30'
-                                      : 'border-gray-200 hover:border-primary/50'
-                                    }
-                                    ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
-                                  `}
-                                >
-                                  <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
-                                  <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className={`grid ${odontogramaDetalle.tipoDenticion === 'temporal' ? 'grid-cols-5' : 'grid-cols-8'} gap-1.5`}>
-                          {odontogramaDetalle.dientes.map((diente) => (
-                            <button
-                              key={diente._id}
-                              type="button"
-                              onClick={() => setDienteEditando(diente)}
-                              className={`rounded-lg p-1.5 text-center border transition-all hover:shadow-sm text-[10px]
-                                ${dienteEditando?._id === diente._id
-                                  ? 'border-primary ring-1 ring-primary/30'
-                                  : 'border-gray-200 hover:border-primary/50'
-                                }
-                                ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : 'bg-gray-50'}
-                              `}
-                            >
-                              <p className="font-semibold text-gray-700">{diente.codigoFDI}</p>
-                              <p className="text-gray-500 leading-tight">{diente.estadoGeneral}</p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <p className="text-xs text-gray-400">Esta consulta no tiene odontograma.</p>
+                  ) : (
+                    <OdontogramaVisual
+                      odontograma={odontogramaDetalle}
+                    />
                 )}
               </div>
 
-              {/* Modal editar diente */}
-              <AnimatePresence>
-                {dienteEditando && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
-                    onClick={() => setDienteEditando(null)}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.95, opacity: 0 }}
-                      className="bg-white rounded-xl p-6 w-full max-w-md"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900">
-                          Diente {dienteEditando.codigoFDI}
-                        </h3>
-                        <button onClick={() => setDienteEditando(null)} className="text-gray-400 hover:text-gray-600">
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Estado General
-                          </label>
-                          <select
-                            defaultValue={dienteEditando.estadoGeneral}
-                            onChange={(e) => handleActualizarDienteDetalle(dienteEditando, e.target.value)}
-                            disabled={actualizandoDienteDetalle}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          >
-                            <option value="SANO">Sano</option>
-                            <option value="CARIES">Caries</option>
-                            <option value="FRACTURA">Fractura</option>
-                            <option value="AUSENTE">Ausente</option>
-                            <option value="PROTESIS">Prótesis</option>
-                            <option value="OBTURACION">Obturación</option>
-                            <option value="ENDODONCIA">Endodoncia</option>
-                            <option value="EXTRACCION">Extracción</option>
-                          </select>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Estado actual: <span className="font-medium">{dienteEditando.estadoGeneral}</span>
-                        </p>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
             </div>
           </motion.div>
         )}
@@ -637,7 +495,6 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
   const [toast, setToast] = useState(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarDetallePaciente, setMostrarDetallePaciente] = useState(false)
-  const [editandoConsulta, setEditandoConsulta] = useState(null)
   const [autoSeleccionando, setAutoSeleccionando] = useState(false)
   const [mostrarAgendarCita, setMostrarAgendarCita] = useState(false)
   const [agendandoCita, setAgendandoCita] = useState(false)
@@ -647,14 +504,12 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
     horaFin: '',
     motivo: 'Control post tratamiento'
   })
-
-  const handleEditConsulta = (consulta) => {
-    setEditandoConsulta(consulta)
-    setMostrarFormulario(true)
-  }
+  const [horarioAtencionDoctor, setHorarioAtencionDoctor] = useState([])
+  const [horariosDisponibles, setHorariosDisponibles] = useState([])
+  const [cargandoHorarios, setCargandoHorarios] = useState(false)
+  const [mensajeHorarios, setMensajeHorarios] = useState('')
 
   const handleNuevaConsulta = () => {
-    setEditandoConsulta(null)
     setMostrarFormulario(true)
   }
 
@@ -662,6 +517,64 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
     const result = await doctorService.getHistorialClinico(pacienteSeleccionado._id)
     if (result.success) {
       setHistorial(result.data.datos)
+    }
+  }
+
+  const cargarHorarioDoctor = async () => {
+    const result = await doctorService.getDoctorProfile()
+    if (result.success) {
+      setHorarioAtencionDoctor(obtenerHorarioAtencion(result.data))
+    } else {
+      mostrarToast(result.error || 'Error al cargar horario de atención', 'error')
+    }
+  }
+
+  const cargarHorariosDisponibles = async (fecha) => {
+    if (!fecha) {
+      setHorariosDisponibles([])
+      setMensajeHorarios('')
+      return
+    }
+
+    if (horarioAtencionDoctor.length === 0) {
+      setHorariosDisponibles([])
+      setMensajeHorarios('No tienes horario de atención configurado.')
+      return
+    }
+
+    setCargandoHorarios(true)
+    setMensajeHorarios('')
+
+    const diaSemana = DIAS_SEMANA[new Date(`${fecha}T00:00:00`).getDay()]
+    const horarioDia = horarioAtencionDoctor.find(horario =>
+      String(horario.dia || '').toLowerCase() === diaSemana
+    )
+
+    if (!horarioDia?.disponible) {
+      setHorariosDisponibles([])
+      setMensajeHorarios('No tienes horario de atención configurado para esta fecha.')
+      setCargandoHorarios(false)
+      return
+    }
+
+    const result = await doctorService.getDoctorCitas({
+      desde: fecha,
+      hasta: fecha,
+      page: 1,
+      limit: 100
+    })
+
+    const citasDia = result.success
+      ? result.data.datos?.citas || result.data.data?.citas || result.data.citas || []
+      : []
+    const bloques = generarBloquesHorario(horarioDia, citasDia)
+
+    setHorariosDisponibles(bloques)
+    setMensajeHorarios(bloques.length === 0 ? 'No hay horarios disponibles para esta fecha.' : '')
+    setCargandoHorarios(false)
+
+    if (!result.success) {
+      mostrarToast(result.error || 'No se pudieron verificar las citas existentes', 'error')
     }
   }
 
@@ -685,6 +598,8 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
       mostrarToast('✅ Cita de seguimiento agendada correctamente')
       setMostrarAgendarCita(false)
       setFormCita({ fecha: '', horaInicio: '', horaFin: '', motivo: 'Control post tratamiento' })
+      setHorariosDisponibles([])
+      setMensajeHorarios('')
     } else {
       const msg = result.status === 409
         ? 'El paciente ya fue atendido hoy. Agenda para una fecha posterior.'
@@ -698,6 +613,18 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
     setToast({ msg, tipo })
     setTimeout(() => setToast(null), 3000)
   }
+
+  useEffect(() => {
+    if (mostrarAgendarCita && horarioAtencionDoctor.length === 0) {
+      cargarHorarioDoctor()
+    }
+  }, [mostrarAgendarCita])
+
+  useEffect(() => {
+    if (mostrarAgendarCita) {
+      cargarHorariosDisponibles(formCita.fecha)
+    }
+  }, [mostrarAgendarCita, formCita.fecha, horarioAtencionDoctor])
 
   // Cargar pacientes al inicio
   useEffect(() => {
@@ -855,33 +782,46 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
                 <input
                   type="date"
                   value={formCita.fecha}
-                  onChange={e => setFormCita({ ...formCita, fecha: e.target.value })}
+                  onChange={e => setFormCita({ ...formCita, fecha: e.target.value, horaInicio: '', horaFin: '' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora inicio</label>
-                  <input
-                    type="time"
-                    value={formCita.horaInicio}
-                    onChange={e => setFormCita({ ...formCita, horaInicio: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora fin</label>
-                  <input
-                    type="time"
-                    value={formCita.horaFin}
-                    onChange={e => setFormCita({ ...formCita, horaFin: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Horario disponible</label>
+                <select
+                  value={formCita.horaInicio && formCita.horaFin ? `${formCita.horaInicio}|${formCita.horaFin}` : ''}
+                  onChange={e => {
+                    const [horaInicio, horaFin] = e.target.value.split('|')
+                    setFormCita({ ...formCita, horaInicio: horaInicio || '', horaFin: horaFin || '' })
+                  }}
+                  disabled={!formCita.fecha || cargandoHorarios || horariosDisponibles.length === 0}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-100 disabled:text-gray-500"
+                  required
+                >
+                  <option value="">
+                    {cargandoHorarios ? 'Cargando horarios...' : 'Selecciona un horario'}
+                  </option>
+                  {horariosDisponibles.map(horario => (
+                    <option
+                      key={`${horario.horaInicio}-${horario.horaFin}`}
+                      value={`${horario.horaInicio}|${horario.horaFin}`}
+                    >
+                      {horario.horaInicio} - {horario.horaFin}
+                    </option>
+                  ))}
+                </select>
+                {mensajeHorarios && (
+                  <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-2">
+                    {mensajeHorarios}
+                  </p>
+                )}
+                {formCita.fecha && !mensajeHorarios && !cargandoHorarios && horariosDisponibles.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Horarios generados según tu horario de atención configurado por administración.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -899,7 +839,11 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
                 <Button type="button" variant="outline" onClick={() => setMostrarAgendarCita(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" loading={agendandoCita} disabled={agendandoCita}>
+                <Button
+                  type="submit"
+                  loading={agendandoCita}
+                  disabled={agendandoCita || !formCita.horaInicio || !formCita.horaFin}
+                >
                   <CalendarPlus size={16} className="mr-1.5" />
                   Agendar cita
                 </Button>
@@ -914,10 +858,9 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
         <FormularioConsulta
           pacienteId={pacienteSeleccionado._id}
           pacienteNombre={`${pacienteSeleccionado.nombre} ${pacienteSeleccionado.apellido}`}
-          consultaEdit={editandoConsulta}
           citaId={citaId}
           motivoCita={motivoCita}
-          onClose={() => { setMostrarFormulario(false); setEditandoConsulta(null) }}
+          onClose={() => setMostrarFormulario(false)}
           onSuccess={handleConsultaCreada}
         />
       )}
@@ -1114,7 +1057,7 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
                       >
-                        <DetalleConsulta consulta={consulta} onEdit={handleEditConsulta} pacienteId={pacienteSeleccionado._id} />
+                        <DetalleConsulta consulta={consulta} pacienteId={pacienteSeleccionado._id} />
                       </motion.div>
                     ))
                   }

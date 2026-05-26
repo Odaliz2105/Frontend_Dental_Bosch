@@ -130,6 +130,18 @@ const TabCitas = () => {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const puedeReasignarCita = (cita) => {
+    if (!cita || cita.estado !== 'pendiente') return false
+
+    const hora = cita.horaInicio || cita.hora || '00:00'
+    const fecha = new Date(cita.fecha)
+    const [horas, minutos] = hora.split(':').map(Number)
+
+    fecha.setHours(horas || 0, minutos || 0, 0, 0)
+
+    return fecha >= new Date()
+  }
+
   useEffect(() => {
     const cargar = async () => {
       setCargando(true)
@@ -189,6 +201,11 @@ const TabCitas = () => {
   const handleReasignar = async () => {
     if (!doctorDestino || !detalleCita) {
       mostrarToast('Selecciona un doctor destino', 'error')
+      return
+    }
+
+    if (!puedeReasignarCita(detalleCita)) {
+      mostrarToast('Solo se pueden reasignar citas pendientes que aún no han pasado', 'error')
       return
     }
 
@@ -292,6 +309,7 @@ const TabCitas = () => {
               </div>
 
               {/* Reasignación */}
+              {puedeReasignarCita(detalleCita) && (
               <div className="border-t border-gray-100 pt-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Reasignar Cita</h3>
                 <div className="flex gap-3">
@@ -318,6 +336,7 @@ const TabCitas = () => {
                   </button>
                 </div>
               </div>
+              )}
 
               <div className="mt-6 flex justify-end">
                 <Button onClick={() => setDetalleCita(null)} variant="outline">
@@ -358,7 +377,7 @@ const TabCitas = () => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               className={`bg-white border rounded-xl p-5 flex items-center justify-between gap-4
-                ${cita.estado === 'cancelada' ? 'opacity-50 border-gray-100' : 'border-gray-200 hover:shadow-sm'}`}
+                ${!puedeReasignarCita(cita) ? 'opacity-75 border-gray-100' : 'border-gray-200 hover:shadow-sm'}`}
             >
               <div className="flex items-center gap-4">
                 <div className="bg-primary/10 p-3 rounded-xl">
@@ -395,7 +414,7 @@ const TabCitas = () => {
                     <Eye size={12} />
                   )}
                 </button>
-                {cita.estado !== 'cancelada' && (
+                {puedeReasignarCita(cita) && (
                   <button
                     onClick={() => verDetalleCita(cita._id || cita.id)}
                     className="text-xs text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors"

@@ -1,21 +1,56 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Activity, User, Plus, X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { Activity, User, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import Button from '../../../components/Button'
 import doctorService from '../../../services/doctorService'
+import OdontogramaVisual from '../../../components/OdontogramaVisual'
 
-const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPaciente }) => {
+const INITIAL_INDICADORES_SALUD_BUCAL = {
+  higieneOral: { placa: 'leve', calculo: 'leve', gingivitis: 'leve' },
+  enfermedadPeriodontal: 'leve',
+  maloclusion: null,
+  fluorosis: null,
+  indiceCPO: { C: 0, P: 0, O: 0 }
+}
+
+const normalizarIndicadoresSaludBucal = (indicadores = {}) => ({
+  higieneOral: {
+    placa: indicadores.higieneOral?.placa || 'leve',
+    calculo: indicadores.higieneOral?.calculo || 'leve',
+    gingivitis: indicadores.higieneOral?.gingivitis || 'leve'
+  },
+  enfermedadPeriodontal: indicadores.enfermedadPeriodontal || 'leve',
+  maloclusion: indicadores.maloclusion ?? null,
+  fluorosis: indicadores.fluorosis ?? null,
+  indiceCPO: {
+    C: indicadores.indiceCPO?.C ?? 0,
+    P: indicadores.indiceCPO?.P ?? 0,
+    O: indicadores.indiceCPO?.O ?? 0
+  }
+})
+
+const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaCita, onLimpiarPaciente }) => {
   const [historial, setHistorial] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [consultaSeleccionada, setConsultaSeleccionada] = useState(null)
-  const [tipoDenticion, setTipoDenticion] = useState('permanente')
+  const [tipoDenticion, setTipoDenticion] = useState('mixta')
   const [inicializando, setInicializando] = useState(false)
   const [cargandoOdontograma, setCargandoOdontograma] = useState(false)
   const [odontograma, setOdontograma] = useState(null)
   const [toast, setToast] = useState(null)
   const [mostrarSelectorConsulta, setMostrarSelectorConsulta] = useState(false)
-  const [dienteSeleccionado, setDienteSeleccionado] = useState(null)
   const [actualizandoDiente, setActualizandoDiente] = useState(false)
+  const [indicadoresSaludBucal, setIndicadoresSaludBucal] = useState(INITIAL_INDICADORES_SALUD_BUCAL)
+  const [guardandoIndicadores, setGuardandoIndicadores] = useState(false)
+
+  const cargarHistorial = async () => {
+    setCargandoHistorial(true)
+    const result = await doctorService.getHistorialClinico(pacienteSeleccionadoId)
+    if (result.success) {
+      setHistorial(result.data.datos)
+    }
+    setCargandoHistorial(false)
+  }
 
   useEffect(() => {
     if (pacienteSeleccionadoId) {
@@ -27,14 +62,13 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
     }
   }, [pacienteSeleccionadoId])
 
-  const cargarHistorial = async () => {
-    setCargandoHistorial(true)
-    const result = await doctorService.getHistorialClinico(pacienteSeleccionadoId)
-    if (result.success) {
-      setHistorial(result.data.datos)
+  useEffect(() => {
+    if (consultaSeleccionada) {
+      setIndicadoresSaludBucal(normalizarIndicadoresSaludBucal(consultaSeleccionada.indicadoresSaludBucal))
+    } else {
+      setIndicadoresSaludBucal(INITIAL_INDICADORES_SALUD_BUCAL)
     }
-    setCargandoHistorial(false)
-  }
+  }, [consultaSeleccionada])
 
   const mostrarToast = (msg, tipo = 'success') => {
     setToast({ msg, tipo })
@@ -43,15 +77,15 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
 
   const cargarOdontogramaExistente = async (consulta) => {
     setCargandoOdontograma(true)
-    const result = await doctorService.verOdontograma(
+    const result = await doctorService.verOdontogramaVisual(
       pacienteSeleccionadoId,
       consulta._id
     )
 
-    const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
+    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma
     if (result.success && odontogramaData) {
       setOdontograma(odontogramaData)
-      setTipoDenticion(odontogramaData.tipoDenticion || 'permanente')
+      setTipoDenticion(odontogramaData.tipoDenticion || 'mixta')
     } else {
       setOdontograma(null)
     }
@@ -61,6 +95,10 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
   const handleInicializarOdontograma = async () => {
     if (!consultaSeleccionada) {
       mostrarToast('Selecciona una consulta primero', 'error')
+      return
+    }
+    if (!puedeEditarConsulta(consultaSeleccionada)) {
+      mostrarToast('Solo puedes inicializar el odontograma de la consulta asociada a la cita actual', 'error')
       return
     }
 
@@ -84,25 +122,94 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
     setInicializando(false)
   }
 
-  const handleActualizarDiente = async (diente, nuevoEstado) => {
+  const handleSuperficieClick = async (
+    diente,
+    superficie,
+    nuevoEstado,
+    superficiesActualizadas,
+    payloadBackend
+  ) => {
     if (!consultaSeleccionada) return
+    if (!puedeEditarConsulta(consultaSeleccionada)) {
+      mostrarToast('Solo puedes editar el odontograma de la consulta asociada a la cita actual', 'error')
+      return
+    }
 
     setActualizandoDiente(true)
     const result = await doctorService.actualizarDienteOdontograma(
       pacienteSeleccionadoId,
       consultaSeleccionada._id,
       diente.codigoFDI,
-      { estadoGeneral: nuevoEstado }
+      payloadBackend
     )
 
-    if (result.success) {
-      mostrarToast('✅ Diente actualizado correctamente')
-      await cargarOdontogramaExistente(consultaSeleccionada)
-    } else {
+    if (!result.success) {
+      mostrarToast(result.error || 'Error al actualizar superficie', 'error')
+    }
+    setActualizandoDiente(false)
+  }
+
+  const handleDienteUpdate = async (diente, field, value) => {
+    if (!consultaSeleccionada) return
+    if (!puedeEditarConsulta(consultaSeleccionada)) {
+      mostrarToast('Solo puedes editar el odontograma de la consulta asociada a la cita actual', 'error')
+      return
+    }
+    setActualizandoDiente(true)
+    const result = await doctorService.actualizarDienteOdontograma(
+      pacienteSeleccionadoId,
+      consultaSeleccionada._id,
+      diente.codigoFDI,
+      { [field]: value }
+    )
+    if (!result.success) {
       mostrarToast(result.error || 'Error al actualizar diente', 'error')
     }
     setActualizandoDiente(false)
-    setDienteSeleccionado(null)
+  }
+
+  const actualizarIndicador = (path, value) => {
+    setIndicadoresSaludBucal(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      const keys = path.split('.')
+      let current = next
+      keys.slice(0, -1).forEach(key => {
+        current[key] = current[key] || {}
+        current = current[key]
+      })
+      current[keys[keys.length - 1]] = value
+      return next
+    })
+  }
+
+  const handleGuardarIndicadores = async () => {
+    if (!consultaSeleccionada) return
+    if (!puedeEditarConsulta(consultaSeleccionada)) {
+      mostrarToast('Solo puedes editar indicadores de la consulta asociada a la cita actual', 'error')
+      return
+    }
+
+    setGuardandoIndicadores(true)
+    const result = await doctorService.actualizarConsulta(
+      pacienteSeleccionadoId,
+      consultaSeleccionada._id,
+      { indicadoresSaludBucal }
+    )
+
+    if (result.success) {
+      const consultaActualizada = { ...consultaSeleccionada, indicadoresSaludBucal }
+      setConsultaSeleccionada(consultaActualizada)
+      setHistorial(prev => ({
+        ...prev,
+        consultas: prev.consultas.map(consulta =>
+          consulta._id === consultaSeleccionada._id ? consultaActualizada : consulta
+        )
+      }))
+      mostrarToast('✅ Indicadores de salud bucal guardados')
+    } else {
+      mostrarToast(result.error || 'Error al guardar indicadores de salud bucal', 'error')
+    }
+    setGuardandoIndicadores(false)
   }
 
   const handleLimpiarPaciente = () => {
@@ -110,6 +217,29 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
   }
 
   const consultas = historial?.consultas || []
+
+  const getConsultaCitaId = (consulta) => {
+    const cita = consulta?.cita || consulta?.citaId
+    if (!cita) return ''
+    return typeof cita === 'string' ? cita : cita._id || cita.id || ''
+  }
+
+  const esMismaFechaCita = (consulta) => {
+    if (!fechaCita || !consulta?.fecha) return false
+    return new Date(consulta.fecha).toISOString().split('T')[0] === new Date(fechaCita).toISOString().split('T')[0]
+  }
+
+  const puedeEditarConsulta = (consulta) => {
+    if (!consulta) return false
+    const consultaCitaId = getConsultaCitaId(consulta)
+    if (citaId && consultaCitaId) return consultaCitaId === citaId
+    if (citaId) return esMismaFechaCita(consulta)
+    return false
+  }
+
+  const consultasEditables = citaId
+    ? consultas.filter(consulta => puedeEditarConsulta(consulta))
+    : []
 
   return (
     <div className="space-y-6">
@@ -209,8 +339,12 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
                       <p className="text-sm text-gray-500 text-center py-4">
                         No hay consultas registradas
                       </p>
+                    ) : consultasEditables.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        No hay una consulta asociada a la cita actual
+                      </p>
                     ) : (
-                      consultas.map((consulta) => (
+                      consultasEditables.map((consulta) => (
                         <button
                           key={consulta._id}
                           onClick={async () => {
@@ -256,6 +390,9 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
                 <option value="temporal">Temporal (Decidua)</option>
                 <option value="mixta">Mixta</option>
               </select>
+              <p className="text-xs text-gray-500 mt-2">
+                El formato HCU se mostrará completo, pero solo se podrán editar las piezas correspondientes al tipo seleccionado.
+              </p>
             </div>
           )}
 
@@ -288,147 +425,119 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPacie
               className="bg-white border border-gray-200 rounded-xl p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Odontograma Inicializado</h3>
+                <h3 className="font-semibold text-gray-900">Odontograma Visual</h3>
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
                   {odontograma.tipoDenticion}
                 </span>
               </div>
 
-              {odontograma.tipoDenticion === 'mixta' ? (
-                <>
-                  <div className="mb-6">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                      Dientes Permanentes
-                    </p>
-                    <div className="grid grid-cols-8 gap-2">
-                      {odontograma.dientes.slice(0, 32).map((diente) => (
-                        <button
-                          key={diente._id}
-                          onClick={() => setDienteSeleccionado(diente)}
-                          className={`bg-gray-50 rounded-lg p-2 text-center border transition-all hover:shadow-md
-                            ${dienteSeleccionado?._id === diente._id
-                              ? 'border-primary ring-2 ring-primary/30'
-                              : 'border-gray-200 hover:border-primary/50'
-                            }
-                            ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : ''}
-                          `}
-                        >
-                          <p className="text-xs font-semibold text-gray-700">{diente.codigoFDI}</p>
-                          <p className="text-[10px] text-gray-500">{diente.estadoGeneral}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                      Dientes Temporales
-                    </p>
-                    <div className="grid grid-cols-5 gap-2">
-                      {odontograma.dientes.slice(32).map((diente) => (
-                        <button
-                          key={diente._id}
-                          onClick={() => setDienteSeleccionado(diente)}
-                          className={`bg-gray-50 rounded-lg p-2 text-center border transition-all hover:shadow-md
-                            ${dienteSeleccionado?._id === diente._id
-                              ? 'border-primary ring-2 ring-primary/30'
-                              : 'border-gray-200 hover:border-primary/50'
-                            }
-                            ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : ''}
-                          `}
-                        >
-                          <p className="text-xs font-semibold text-gray-700">{diente.codigoFDI}</p>
-                          <p className="text-[10px] text-gray-500">{diente.estadoGeneral}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className={`grid ${odontograma.tipoDenticion === 'temporal' ? 'grid-cols-5' : 'grid-cols-8'} gap-2`}>
-                  {odontograma.dientes.map((diente) => (
-                    <button
-                      key={diente._id}
-                      onClick={() => setDienteSeleccionado(diente)}
-                      className={`bg-gray-50 rounded-lg p-2 text-center border transition-all hover:shadow-md
-                        ${dienteSeleccionado?._id === diente._id
-                          ? 'border-primary ring-2 ring-primary/30'
-                          : 'border-gray-200 hover:border-primary/50'
-                        }
-                        ${diente.estadoGeneral !== 'SANO' ? 'bg-red-50' : ''}
-                      `}
-                    >
-                      <p className="text-xs font-semibold text-gray-700">{diente.codigoFDI}</p>
-                      <p className="text-[10px] text-gray-500">{diente.estadoGeneral}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <p className="text-xs text-gray-500 mt-4">
-                Total dientes: {odontograma.dientes.length}
-              </p>
+              <OdontogramaVisual 
+                odontograma={odontograma}
+                onSuperficieClick={handleSuperficieClick}
+                onDienteUpdate={handleDienteUpdate}
+              />
             </motion.div>
           )}
 
-          {/* Modal para actualizar diente */}
-          <AnimatePresence>
-            {dienteSeleccionado && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-                onClick={() => setDienteSeleccionado(null)}
-              >
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.95, opacity: 0 }}
-                  className="bg-white rounded-xl p-6 w-full max-w-md"
-                  onClick={(e) => e.stopPropagation()}
+          {odontograma && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white border border-gray-200 rounded-xl p-6"
+            >
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Indicadores de Salud Bucal</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Completa estos datos después de revisar el odontograma. Se reflejarán en la historia clínica.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleGuardarIndicadores}
+                  loading={guardandoIndicadores}
+                  disabled={guardandoIndicadores}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900">
-                      Actualizar Diente {dienteSeleccionado.codigoFDI}
-                    </h3>
-                    <button
-                      onClick={() => setDienteSeleccionado(null)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
+                  Guardar indicadores
+                </Button>
+              </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Estado General
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {['placa', 'calculo', 'gingivitis'].map(key => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+                        {key === 'calculo' ? 'Cálculo' : key}
                       </label>
                       <select
-                        defaultValue={dienteSeleccionado.estadoGeneral}
-                        onChange={(e) => handleActualizarDiente(dienteSeleccionado, e.target.value)}
-                        disabled={actualizandoDiente}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        value={indicadoresSaludBucal.higieneOral[key]}
+                        onChange={e => actualizarIndicador(`higieneOral.${key}`, e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                       >
-                        <option value="SANO">Sano</option>
-                        <option value="CARIES">Caries</option>
-                        <option value="FRACTURA">Fractura</option>
-                        <option value="AUSENTE">Ausente</option>
-                        <option value="PROTESIS">Prótesis</option>
-                        <option value="OBTURACION">Obturación</option>
-                        <option value="ENDODONCIA">Endodoncia</option>
-                        <option value="EXTRACCION">Extracción</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderada">Moderada</option>
+                        <option value="severa">Severa</option>
                       </select>
                     </div>
+                  ))}
+                </div>
 
-                    <p className="text-xs text-gray-500">
-                      Estado actual: <span className="font-medium">{dienteSeleccionado.estadoGeneral}</span>
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Enfermedad Periodontal
+                    </label>
+                    <select
+                      value={indicadoresSaludBucal.enfermedadPeriodontal}
+                      onChange={e => actualizarIndicador('enfermedadPeriodontal', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="leve">Leve</option>
+                      <option value="moderada">Moderada</option>
+                      <option value="severa">Severa</option>
+                      <option value="">Ninguna</option>
+                    </select>
                   </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Maloclusión
+                    </label>
+                    <select
+                      value={indicadoresSaludBucal.maloclusion === null ? 'no' : indicadoresSaludBucal.maloclusion}
+                      onChange={e => actualizarIndicador('maloclusion', e.target.value === 'no' ? null : e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="no">No</option>
+                      <option value="angle I">Angle I</option>
+                      <option value="angle II">Angle II</option>
+                      <option value="angle III">Angle III</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Índice CPO</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {['C', 'P', 'O'].map(key => (
+                      <div key={key}>
+                        <label className="block text-xs text-gray-500 mb-1">{key}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={indicadoresSaludBucal.indiceCPO[key]}
+                          onChange={e => actualizarIndicador(`indiceCPO.${key}`, Number(e.target.value))}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+
         </div>
       )}
     </div>

@@ -204,6 +204,17 @@ export const verOdontograma = async (pacienteId, consultaId) => {
   }
 }
 
+export const verOdontogramaVisual = async (pacienteId, consultaId) => {
+  try {
+    const response = await api.get(
+      `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma/visual`
+    )
+    return { success: true, data: response.data }
+  } catch (error) {
+    return handleError(error)
+  }
+}
+
 export const actualizarDienteOdontograma = async (pacienteId, consultaId, numeroDiente, datosActualizacion) => {
   try {
     const response = await api.put(
@@ -293,6 +304,7 @@ const doctorService = {
   eliminarHistorial,
   inicializarOdontograma,
   verOdontograma,
+  verOdontogramaVisual,
   actualizarDienteOdontograma,
   actualizarObservacionesGenerales,
   getTratamientosPaciente,

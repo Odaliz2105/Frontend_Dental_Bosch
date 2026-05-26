@@ -179,7 +179,35 @@ const TabCitas = ({ onAtender }) => {
         limit: 50
       })
       if (result.success) {
-        setCitas(result.data.datos?.citas || [])
+        const citasData = result.data.datos?.citas || []
+        const citasVencidas = citasData.filter(cita => debeCancelarAutomaticamente(cita))
+
+        if (citasVencidas.length > 0) {
+          await Promise.all(
+            citasVencidas.map(cita =>
+              doctorService.updateCitaEstado(
+                cita._id || cita.id,
+                'cancelada',
+                'Cita cancelada automáticamente porque no fue atendida en la fecha programada',
+                'Cancelación automática por cita vencida'
+              )
+            )
+          )
+
+          const citasActualizadas = await doctorService.getDoctorCitas({
+            desde: `${añoActual}-01-01`,
+            hasta: `${añoActual}-12-31`,
+            page: 1,
+            limit: 50
+          })
+
+          if (citasActualizadas.success) {
+            setCitas(citasActualizadas.data.datos?.citas || [])
+            return
+          }
+        }
+
+        setCitas(citasData)
       }
     } catch (error) {
       console.error('Error cargando citas:', error)
@@ -200,6 +228,49 @@ const TabCitas = ({ onAtender }) => {
 
   const getEstadoValor = (cita) => {
     return cita.estado?.valor || cita.estado || ''
+  }
+
+  const getFechaHoraCita = (cita, horaFallback = '00:00') => {
+    const hora = cita.horaInicio || cita.hora || horaFallback
+    const fecha = new Date(cita.fecha || cita.fechaISO)
+    const [horas, minutos] = hora.split(':').map(Number)
+
+    fecha.setHours(horas || 0, minutos || 0, 0, 0)
+
+    return fecha
+  }
+
+  const esCitaAtendible = (cita) => {
+    const estado = getEstadoValor(cita)
+    if (!['pendiente', 'confirmada'].includes(estado)) return false
+
+    const ahora = new Date()
+    const inicio = getFechaHoraCita(cita)
+    const fin = new Date(inicio)
+
+    if (cita.horaFin) {
+      const [horasFin, minutosFin] = cita.horaFin.split(':').map(Number)
+      fin.setHours(horasFin || 0, minutosFin || 0, 0, 0)
+    } else {
+      fin.setHours(23, 59, 59, 999)
+    }
+
+    return ahora >= inicio && ahora <= fin
+  }
+
+  const debeCancelarAutomaticamente = (cita) => {
+    if (getEstadoValor(cita) !== 'pendiente') return false
+
+    const fechaFin = new Date(cita.fecha || cita.fechaISO)
+
+    if (cita.horaFin) {
+      const [horas, minutos] = cita.horaFin.split(':').map(Number)
+      fechaFin.setHours(horas || 0, minutos || 0, 0, 0)
+    } else {
+      fechaFin.setHours(23, 59, 59, 999)
+    }
+
+    return fechaFin < new Date()
   }
 
   const citasFiltradas = citas.filter(cita => {
@@ -321,14 +392,16 @@ const TabCitas = ({ onAtender }) => {
                     <EstadoBadge estado={cita.estado} />
                     {estadoValor !== 'finalizada' && estadoValor !== 'cancelada' && (
                       <div className="flex gap-1.5">
-                        <button
-                          onClick={() => {
-                            if (onAtender) onAtender(cita)
-                          }}
-                          className="text-xs text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 transition-colors font-medium"
-                        >
-                          Atender
-                        </button>
+                        {esCitaAtendible(cita) && (
+                          <button
+                            onClick={() => {
+                              if (onAtender) onAtender(cita)
+                            }}
+                            className="text-xs text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-300 transition-colors font-medium"
+                          >
+                            Atender
+                          </button>
+                        )}
                         <button
                           onClick={() => setCitaSeleccionada(cita)}
                           className="text-xs text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/30 transition-colors"

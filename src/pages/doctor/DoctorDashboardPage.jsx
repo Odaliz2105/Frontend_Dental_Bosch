@@ -114,6 +114,9 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
       pacienteId,
       pacienteNombre: cita.paciente?.nombreCompleto || '',
       citaId: cita._id || cita.id,
+      fechaCita: cita.fecha || cita.fechaISO,
+      horaInicio: cita.horaInicio || cita.hora,
+      horaFin: cita.horaFin,
       motivoCita: cita.motivo || ''
     })
     setTabActiva('historias')
@@ -153,6 +156,10 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
       <TabOdontograma
         pacienteSeleccionadoId={pacienteAtender?.pacienteId}
         pacienteNombre={pacienteAtender?.pacienteNombre}
+        citaId={pacienteAtender?.citaId}
+        fechaCita={pacienteAtender?.fechaCita}
+        horaInicioCita={pacienteAtender?.horaInicio}
+        horaFinCita={pacienteAtender?.horaFin}
         onLimpiarPaciente={handleLimpiarPacienteAtender}
       />
     ),
