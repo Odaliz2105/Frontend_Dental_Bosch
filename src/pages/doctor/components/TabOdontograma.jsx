@@ -13,6 +13,32 @@ const INITIAL_INDICADORES_SALUD_BUCAL = {
   indiceCPO: { C: 0, P: 0, O: 0 }
 }
 
+const calcularCPO = (odontograma) => {
+  if (!odontograma?.dientes) return { C: 0, P: 0, O: 0 }
+  
+  let C = 0
+  let P = 0
+  let O = 0
+  
+  odontograma.dientes.forEach(d => {
+    const estado = String(d.estadoGeneral || '').toUpperCase()
+    
+    const superficies = Object.values(d.superficiesClasico || d.superficies || {})
+    const tieneCaries = superficies.some(s => s?.estado === 'CARIES' || s?.color === 'ROJO')
+    const tieneObturacion = superficies.some(s => s?.estado === 'OBTURADO' || s?.color === 'AZUL')
+    
+    if (estado === 'CARIES' || tieneCaries) {
+      C++
+    } else if (estado === 'PERDIDA_POR_CARIES' || estado === 'EXTRACCION_INDICADA') {
+      P++
+    } else if (estado === 'OBTURADO' || tieneObturacion) {
+      O++
+    }
+  })
+  
+  return { C, P, O }
+}
+
 const normalizarIndicadoresSaludBucal = (indicadores = {}) => ({
   higieneOral: {
     placa: indicadores.higieneOral?.placa || 'leve',
@@ -86,6 +112,12 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     if (result.success && odontogramaData) {
       setOdontograma(odontogramaData)
       setTipoDenticion(odontogramaData.tipoDenticion || 'mixta')
+      
+      const cpoCalculado = calcularCPO(odontogramaData)
+      setIndicadoresSaludBucal(prev => ({
+        ...prev,
+        indiceCPO: cpoCalculado
+      }))
     } else {
       setOdontograma(null)
     }
@@ -143,7 +175,28 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       payloadBackend
     )
 
-    if (!result.success) {
+    if (result.success) {
+      setOdontograma(prev => {
+        if (!prev) return prev
+        const nuevosDientes = prev.dientes.map(d => {
+          if (d._id === diente._id || d.codigoFDI === diente.codigoFDI) {
+            return {
+              ...d,
+              superficiesClasico: superficiesActualizadas,
+              estadoGeneral: nuevoEstado || d.estadoGeneral
+            }
+          }
+          return d
+        })
+        const nuevoOdonto = { ...prev, dientes: nuevosDientes }
+        const cpo = calcularCPO(nuevoOdonto)
+        setIndicadoresSaludBucal(ind => ({
+          ...ind,
+          indiceCPO: cpo
+        }))
+        return nuevoOdonto
+      })
+    } else {
       mostrarToast(result.error || 'Error al actualizar superficie', 'error')
     }
     setActualizandoDiente(false)
@@ -162,7 +215,27 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       diente.codigoFDI,
       { [field]: value }
     )
-    if (!result.success) {
+    if (result.success) {
+      setOdontograma(prev => {
+        if (!prev) return prev
+        const nuevosDientes = prev.dientes.map(d => {
+          if (d._id === diente._id || d.codigoFDI === diente.codigoFDI) {
+            return {
+              ...d,
+              [field]: value
+            }
+          }
+          return d
+        })
+        const nuevoOdonto = { ...prev, dientes: nuevosDientes }
+        const cpo = calcularCPO(nuevoOdonto)
+        setIndicadoresSaludBucal(ind => ({
+          ...ind,
+          indiceCPO: cpo
+        }))
+        return nuevoOdonto
+      })
+    } else {
       mostrarToast(result.error || 'Error al actualizar diente', 'error')
     }
     setActualizandoDiente(false)
@@ -229,17 +302,26 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     return new Date(consulta.fecha).toISOString().split('T')[0] === new Date(fechaCita).toISOString().split('T')[0]
   }
 
+  const esCreadaHoy = (consulta) => {
+    if (!consulta?.fecha) return false
+    const fechaConsulta = new Date(consulta.fecha)
+    const hoy = new Date()
+    return fechaConsulta.getFullYear() === hoy.getFullYear() &&
+           fechaConsulta.getMonth() === hoy.getMonth() &&
+           fechaConsulta.getDate() === hoy.getDate()
+  }
+
   const puedeEditarConsulta = (consulta) => {
     if (!consulta) return false
     const consultaCitaId = getConsultaCitaId(consulta)
     if (citaId && consultaCitaId) return consultaCitaId === citaId
     if (citaId) return esMismaFechaCita(consulta)
-    return false
+    
+    // Si no hay citaId (emergencias o consultas libres), permitir editar si es creada hoy
+    return esCreadaHoy(consulta)
   }
 
-  const consultasEditables = citaId
-    ? consultas.filter(consulta => puedeEditarConsulta(consulta))
-    : []
+  const consultasEditables = consultas.filter(consulta => puedeEditarConsulta(consulta))
 
   return (
     <div className="space-y-6">
@@ -341,7 +423,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
                       </p>
                     ) : consultasEditables.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-4">
-                        No hay una consulta asociada a la cita actual
+                        No hay una consulta asociada a la cita actual o creada hoy
                       </p>
                     ) : (
                       consultasEditables.map((consulta) => (
@@ -433,8 +515,8 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
 
               <OdontogramaVisual 
                 odontograma={odontograma}
-                onSuperficieClick={handleSuperficieClick}
-                onDienteUpdate={handleDienteUpdate}
+                onSuperficieClick={puedeEditarConsulta(consultaSeleccionada) ? handleSuperficieClick : null}
+                onDienteUpdate={puedeEditarConsulta(consultaSeleccionada) ? handleDienteUpdate : null}
               />
             </motion.div>
           )}

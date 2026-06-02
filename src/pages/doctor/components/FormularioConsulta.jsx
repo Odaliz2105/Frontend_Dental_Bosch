@@ -455,6 +455,16 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
               </div>
             )}
 
+            {!citaId && !consultaEdit && (
+              <div className="mx-6 mt-3 bg-blue-50 border border-blue-200 text-blue-800 text-xs px-4 py-2.5 rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Atención: Consulta de Emergencia / Libre</p>
+                  <p className="mt-0.5 text-blue-700">Esta consulta se registrará de forma libre (sin cita previa asociada en el calendario). Al finalizar, podrás inicializar y editar su odontograma desde la pestaña de Odontograma seleccionando este registro.</p>
+                </div>
+              </div>
+            )}
+
             {/* Contenido */}
             <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
               {/* ── SECCIÓN PRINCIPAL ── */}

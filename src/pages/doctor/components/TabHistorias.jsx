@@ -13,7 +13,7 @@ import ModalDetallePaciente from './ModalDetallePaciente'
 import OdontogramaVisual from '../../../components/OdontogramaVisual'
 
 const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-const DURACION_BLOQUE_MINUTOS = 30
+const DURACION_BLOQUE_MINUTOS = 60
 
 const timeToMinutes = (time) => {
   if (!time) return NaN
@@ -32,7 +32,7 @@ const obtenerHorarioAtencion = (profileData) => {
   return data?.horarioAtencion || data?.usuario?.doctor?.horarioAtencion || []
 }
 
-const generarBloquesHorario = (horarioDia, citasDia = []) => {
+const generarBloquesHorario = (horarioDia, citasDia = [], fechaSeleccionadaStr = '') => {
   if (!horarioDia?.disponible || !horarioDia?.horaInicio || !horarioDia?.horaFin) return []
 
   const inicio = timeToMinutes(horarioDia.horaInicio)
@@ -45,10 +45,30 @@ const generarBloquesHorario = (horarioDia, citasDia = []) => {
     }))
     .filter(cita => Number.isFinite(cita.inicio) && Number.isFinite(cita.fin))
 
+  let limiteMinutoHoy = 0
+  const hoy = new Date()
+  if (fechaSeleccionadaStr) {
+    const [año, mes, dia] = fechaSeleccionadaStr.split('-').map(Number)
+    const fechaCita = new Date(año, mes - 1, dia)
+    fechaCita.setHours(0, 0, 0, 0)
+    
+    const hoySinHora = new Date()
+    hoySinHora.setHours(0, 0, 0, 0)
+    
+    if (fechaCita.getTime() === hoySinHora.getTime()) {
+      limiteMinutoHoy = hoy.getHours() * 60 + hoy.getMinutes()
+    }
+  }
+
   const bloques = []
   for (let minuto = inicio; minuto + DURACION_BLOQUE_MINUTOS <= fin; minuto += DURACION_BLOQUE_MINUTOS) {
     const bloqueInicio = minuto
     const bloqueFin = minuto + DURACION_BLOQUE_MINUTOS
+
+    if (limiteMinutoHoy > 0 && bloqueInicio < limiteMinutoHoy) {
+      continue
+    }
+
     const ocupado = citasOcupadas.some(cita => bloqueInicio < cita.fin && bloqueFin > cita.inicio)
 
     if (!ocupado) {
@@ -481,7 +501,7 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
 }
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────
-const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCita, onLimpiarPaciente }) => {
+const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCita, onLimpiarPaciente, onSeleccionarPaciente }) => {
   const { getAdminPacientes, user } = useAuth()
 
   const [pacientes, setPacientes] = useState([])
@@ -567,7 +587,7 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
     const citasDia = result.success
       ? result.data.datos?.citas || result.data.data?.citas || result.data.citas || []
       : []
-    const bloques = generarBloquesHorario(horarioDia, citasDia)
+    const bloques = generarBloquesHorario(horarioDia, citasDia, fecha)
 
     setHorariosDisponibles(bloques)
     setMensajeHorarios(bloques.length === 0 ? 'No hay horarios disponibles para esta fecha.' : '')
@@ -699,8 +719,10 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
   }, [pacienteSeleccionado])
 
   const seleccionarPaciente = (paciente) => {
-    if (onLimpiarPaciente) onLimpiarPaciente()
     setPacienteSeleccionado(paciente)
+    if (onSeleccionarPaciente) {
+      onSeleccionarPaciente(paciente)
+    }
   }
 
   const handleCrearHistorial = async () => {
@@ -782,6 +804,10 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
                 <input
                   type="date"
                   value={formCita.fecha}
+                  min={(() => {
+                    const hoy = new Date()
+                    return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+                  })()}
                   onChange={e => setFormCita({ ...formCita, fecha: e.target.value, horaInicio: '', horaFin: '' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   required

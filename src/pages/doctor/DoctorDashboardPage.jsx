@@ -150,6 +150,17 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
         citaId={pacienteAtender?.citaId}
         motivoCita={pacienteAtender?.motivoCita}
         onLimpiarPaciente={handleLimpiarPacienteAtender}
+        onSeleccionarPaciente={(paciente) => {
+          setPacienteAtender({
+            pacienteId: paciente._id || paciente.id,
+            pacienteNombre: paciente.nombreCompleto || `${paciente.nombre} ${paciente.apellido}`,
+            citaId: null,
+            fechaCita: null,
+            horaInicio: null,
+            horaFin: null,
+            motivoCita: ''
+          })
+        }}
       />
     ),
     odontograma: () => (
@@ -167,6 +178,7 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
       <TabTratamientos
         pacienteSeleccionadoId={pacienteAtender?.pacienteId}
         pacienteNombre={pacienteAtender?.pacienteNombre}
+        citaId={pacienteAtender?.citaId}
         onLimpiarPaciente={handleLimpiarPacienteAtender}
       />
     ),

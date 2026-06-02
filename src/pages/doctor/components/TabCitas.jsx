@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, Search, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import doctorService from '../../../services/doctorService'
 import Button from '../../../components/Button'
+
+const getFechaBaseCitaHelper = (cita) => {
+  const fechaValor = cita?.fecha || cita?.fechaISO
+  if (typeof fechaValor === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaValor)) {
+    const [año, mes, dia] = fechaValor.split('T')[0].split('-').map(Number)
+    return new Date(año, mes - 1, dia)
+  }
+  return new Date(fechaValor || new Date())
+}
 
 const EstadoBadge = ({ estado }) => {
   const config = {
@@ -32,12 +41,12 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
     onClose()
   }
 
-  const fechaCita = new Date(cita.fecha || cita.fechaISO)
+  const fechaCita = getFechaBaseCitaHelper(cita)
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   fechaCita.setHours(0, 0, 0, 0)
-  const esFutura = fechaCita >= hoy
-  const esPasada = fechaCita < hoy
+  const esEstrictamenteFutura = fechaCita > hoy
+  const esEstrictamentePasada = fechaCita < hoy
 
   return (
     <motion.div
@@ -86,13 +95,13 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
               </button>
             ))}
           </div>
-          {accion === 'finalizada' && esFutura && (
+          {accion === 'finalizada' && esEstrictamenteFutura && (
             <p className="text-red-600 text-xs mt-2 flex items-center gap-1">
               <AlertCircle size={12} />
               No puedes finalizar una cita futura
             </p>
           )}
-          {accion === 'cancelada' && esPasada && (
+          {accion === 'cancelada' && esEstrictamentePasada && (
             <p className="text-red-600 text-xs mt-2 flex items-center gap-1">
               <AlertCircle size={12} />
               No puedes cancelar una cita del pasado
@@ -139,8 +148,8 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
             disabled={
               !accion || 
               loading || 
-              (accion === 'finalizada' && esFutura) ||
-              (accion === 'cancelada' && esPasada)
+              (accion === 'finalizada' && esEstrictamenteFutura) ||
+              (accion === 'cancelada' && esEstrictamentePasada)
             }
           >
             Confirmar
@@ -179,35 +188,7 @@ const TabCitas = ({ onAtender }) => {
         limit: 50
       })
       if (result.success) {
-        const citasData = result.data.datos?.citas || []
-        const citasVencidas = citasData.filter(cita => debeCancelarAutomaticamente(cita))
-
-        if (citasVencidas.length > 0) {
-          await Promise.all(
-            citasVencidas.map(cita =>
-              doctorService.updateCitaEstado(
-                cita._id || cita.id,
-                'cancelada',
-                'Cita cancelada automáticamente porque no fue atendida en la fecha programada',
-                'Cancelación automática por cita vencida'
-              )
-            )
-          )
-
-          const citasActualizadas = await doctorService.getDoctorCitas({
-            desde: `${añoActual}-01-01`,
-            hasta: `${añoActual}-12-31`,
-            page: 1,
-            limit: 50
-          })
-
-          if (citasActualizadas.success) {
-            setCitas(citasActualizadas.data.datos?.citas || [])
-            return
-          }
-        }
-
-        setCitas(citasData)
+        setCitas(result.data.datos?.citas || [])
       }
     } catch (error) {
       console.error('Error cargando citas:', error)
@@ -230,9 +211,27 @@ const TabCitas = ({ onAtender }) => {
     return cita.estado?.valor || cita.estado || ''
   }
 
+  const getEstadoVisual = (cita) => {
+    const estado = getEstadoValor(cita)
+    if (estado === 'pendiente' || estado === 'confirmada') {
+      const fechaCita = getFechaBaseCita(cita)
+      const hoy = new Date()
+      fechaCita.setHours(0, 0, 0, 0)
+      hoy.setHours(0, 0, 0, 0)
+      if (fechaCita < hoy) {
+        return 'cancelada'
+      }
+    }
+    return estado
+  }
+
+  const getFechaBaseCita = (cita) => {
+    return getFechaBaseCitaHelper(cita)
+  }
+
   const getFechaHoraCita = (cita, horaFallback = '00:00') => {
     const hora = cita.horaInicio || cita.hora || horaFallback
-    const fecha = new Date(cita.fecha || cita.fechaISO)
+    const fecha = getFechaBaseCita(cita)
     const [horas, minutos] = hora.split(':').map(Number)
 
     fecha.setHours(horas || 0, minutos || 0, 0, 0)
@@ -241,12 +240,17 @@ const TabCitas = ({ onAtender }) => {
   }
 
   const esCitaAtendible = (cita) => {
-    const estado = getEstadoValor(cita)
-    if (!['pendiente', 'confirmada'].includes(estado)) return false
+    const estado = getEstadoVisual(cita)
+    if (!['pendiente', 'confirmada', 'aprobado'].includes(estado)) return false
 
     const ahora = new Date()
-    const inicio = getFechaHoraCita(cita)
-    const fin = new Date(inicio)
+    const fechaCita = getFechaBaseCita(cita)
+    const hoy = new Date()
+    fechaCita.setHours(0, 0, 0, 0)
+    hoy.setHours(0, 0, 0, 0)
+    if (fechaCita.getTime() !== hoy.getTime()) return false
+
+    const fin = getFechaHoraCita(cita, '23:59')
 
     if (cita.horaFin) {
       const [horasFin, minutosFin] = cita.horaFin.split(':').map(Number)
@@ -255,29 +259,14 @@ const TabCitas = ({ onAtender }) => {
       fin.setHours(23, 59, 59, 999)
     }
 
-    return ahora >= inicio && ahora <= fin
-  }
-
-  const debeCancelarAutomaticamente = (cita) => {
-    if (getEstadoValor(cita) !== 'pendiente') return false
-
-    const fechaFin = new Date(cita.fecha || cita.fechaISO)
-
-    if (cita.horaFin) {
-      const [horas, minutos] = cita.horaFin.split(':').map(Number)
-      fechaFin.setHours(horas || 0, minutos || 0, 0, 0)
-    } else {
-      fechaFin.setHours(23, 59, 59, 999)
-    }
-
-    return fechaFin < new Date()
+    return ahora <= fin
   }
 
   const citasFiltradas = citas.filter(cita => {
     const coincideBusqueda =
       cita.paciente?.nombreCompleto?.toLowerCase().includes(busqueda.toLowerCase()) ||
       cita.motivo?.toLowerCase().includes(busqueda.toLowerCase())
-    const estadoValor = getEstadoValor(cita)
+    const estadoValor = getEstadoVisual(cita)
     const coincideEstado = filtroEstado === 'todos' || estadoValor === filtroEstado
     return coincideBusqueda && coincideEstado
   })
@@ -340,7 +329,6 @@ const TabCitas = ({ onAtender }) => {
         >
           <option value="todos">Todos los estados</option>
           <option value="pendiente">Pendientes</option>
-          <option value="confirmada">Confirmadas</option>
           <option value="finalizada">Finalizadas</option>
           <option value="cancelada">Canceladas</option>
         </select>
@@ -350,7 +338,7 @@ const TabCitas = ({ onAtender }) => {
       <div className="space-y-3">
         <AnimatePresence>
           {citasFiltradas.map((cita, index) => {
-            const estadoValor = getEstadoValor(cita)
+            const estadoValor = getEstadoVisual(cita)
             return (
               <motion.div
                 key={cita._id || cita.id}
@@ -389,7 +377,7 @@ const TabCitas = ({ onAtender }) => {
                   </div>
 
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <EstadoBadge estado={cita.estado} />
+                    <EstadoBadge estado={getEstadoVisual(cita)} />
                     {estadoValor !== 'finalizada' && estadoValor !== 'cancelada' && (
                       <div className="flex gap-1.5">
                         {esCitaAtendible(cita) && (

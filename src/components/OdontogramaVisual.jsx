@@ -244,6 +244,32 @@ const ORDEN_HCU = {
 const obtenerCuadrante = (diente) => diente.visual?.cuadrante || parseInt(diente.codigoFDI?.[0]) || 0
 const obtenerPosicion = (diente) => diente.visual?.posicion || parseInt(diente.codigoFDI?.[1]) || 0
 
+const clonarEstadoSuperficie = (superficie) => ({
+  color: superficie?.color || null,
+  tratamiento: superficie?.tratamiento || null,
+  patologia: superficie?.patologia || null,
+  simbolos: [...(superficie?.simbolos || [])],
+})
+
+const clonarSuperficiesHCU = (superficies = {}) => {
+  const clon = {}
+  for (const key of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
+    clon[key] = clonarEstadoSuperficie(superficies[key])
+  }
+  return clon
+}
+
+const obtenerSuperficiesHCUDeDiente = (diente) => {
+  const raw = diente.superficies || diente.superficiesClasico || {}
+  if (diente.superficies) return clonarSuperficiesHCU(superficiesBackendAHCU(raw))
+
+  const superficies = {}
+  for (const k of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
+    superficies[k] = clonarEstadoSuperficie(migrarSuperficie(raw[k]))
+  }
+  return superficies
+}
+
 // ── TOOTH COMPONENTS ───────────────────────────────────────
 const ToothSquare = ({ superficies, onAbrirSelector, bloqueado = false }) => {
   const sup = (name) => migrarSuperficie(superficies?.[name])
@@ -831,15 +857,8 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
     const map = {}
     if (odontograma?.dientes) {
       odontograma.dientes.forEach((d) => {
-        const raw = d.superficies || d.superficiesClasico || {}
-        const superficies = d.superficies ? superficiesBackendAHCU(raw) : {}
-        if (!d.superficies) {
-          for (const k of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
-            superficies[k] = migrarSuperficie(raw[k])
-          }
-        }
         map[d._id] = {
-          superficies,
+          superficies: obtenerSuperficiesHCUDeDiente(d),
           recesion: d.recesion ?? null,
           movilidad: d.movilidad ?? null,
         }
@@ -863,15 +882,8 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
     const map = {}
     if (odontograma?.dientes) {
       odontograma.dientes.forEach((d) => {
-        const raw = d.superficies || d.superficiesClasico || {}
-        const superficies = d.superficies ? superficiesBackendAHCU(raw) : {}
-        if (!d.superficies) {
-          for (const k of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
-            superficies[k] = migrarSuperficie(raw[k])
-          }
-        }
         map[d._id] = {
-          superficies,
+          superficies: obtenerSuperficiesHCUDeDiente(d),
           recesion: d.recesion ?? null,
           movilidad: d.movilidad ?? null,
         }
@@ -881,16 +893,18 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
   }, [odontograma])
 
   const handleAbrirSelector = useCallback((diente, data) => {
+    if (!onSuperficieClick) return
     setSelectorAbierto({ diente, ...data })
-  }, [])
+  }, [onSuperficieClick])
 
   const handleSelectorAccept = useCallback(
     (diente, superficie, nuevoEstado) => {
+      const estadoClonado = clonarEstadoSuperficie(nuevoEstado)
       setDatosPorDiente((prev) => ({
         ...prev,
         [diente._id]: {
           ...prev[diente._id],
-          superficies: { ...prev[diente._id].superficies, [superficie]: nuevoEstado },
+          superficies: { ...prev[diente._id].superficies, [superficie]: estadoClonado },
         },
       }))
       setSelectorAbierto(null)
@@ -898,20 +912,21 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
       if (onSuperficieClick) {
         const updatedSuperficies = {
           ...datosPorDiente[diente._id].superficies,
-          [superficie]: nuevoEstado,
+          [superficie]: estadoClonado,
         }
         
-        const payloadBackend = crearPayloadCambioHCU(diente, superficie, nuevoEstado)
-        onSuperficieClick(diente, superficie, nuevoEstado, updatedSuperficies, payloadBackend)
+        const payloadBackend = crearPayloadCambioHCU(diente, superficie, estadoClonado)
+        onSuperficieClick(diente, superficie, estadoClonado, updatedSuperficies, payloadBackend)
       }
     },
     [onSuperficieClick, datosPorDiente]
   )
 
   const handleDienteClickValor = useCallback((diente, field, posicion) => {
+    if (!onDienteUpdate) return
     const opciones = field === 'recesion' ? OPCIONES_RECESION : OPCIONES_MOVILIDAD
     setInlineAbierto({ diente, field, posicion, opciones })
-  }, [])
+  }, [onDienteUpdate])
 
   const handleDienteValorSelect = useCallback(
     (diente, field, value) => {

@@ -189,7 +189,7 @@ const ModalTratamiento = ({ tratamiento, pacienteId, onClose, onSuccess }) => {
   )
 }
 
-const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPaciente }) => {
+const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, citaId, onLimpiarPaciente }) => {
   const [tratamientos, setTratamientos] = useState([])
   const [cargando, setCargando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
@@ -330,13 +330,27 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPaci
               <X className="w-4 h-4 mr-2" />
               Limpiar Paciente
             </Button>
-            <Button onClick={() => { setEditandoTratamiento(null); setMostrarFormulario(true) }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Tratamiento
-            </Button>
+            {citaId && (
+              <Button onClick={() => { setEditandoTratamiento(null); setMostrarFormulario(true) }}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Tratamiento
+              </Button>
+            )}
           </div>
         )}
       </div>
+
+      {pacienteSeleccionadoId && !citaId && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Modo de Solo Lectura</p>
+            <p className="mt-0.5 text-amber-700">
+              Para poder crear o modificar planes de tratamiento, debes iniciar la atención desde una cita activa en el calendario. Actualmente solo puedes visualizar los registros existentes de este paciente.
+            </p>
+          </div>
+        </div>
+      )}
 
       {!pacienteSeleccionadoId ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
@@ -541,7 +555,7 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPaci
                   : 'No hay tratamientos registrados para este paciente'
                 }
               </p>
-              {!busqueda && filtroEstado === 'todos' && (
+              {!busqueda && filtroEstado === 'todos' && citaId && (
                 <Button
                   variant="outline"
                   size="small"
@@ -644,40 +658,44 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, onLimpiarPaci
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => { setEditandoTratamiento(tratamiento); setMostrarFormulario(true) }}
-                            className="text-xs text-primary hover:bg-primary/10 px-2 py-1.5 rounded-lg border border-primary/30 transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              const estados = ['pendiente', 'en_progreso', 'completado', 'cancelado']
-                              const idx = estados.indexOf(tratamiento.estado)
-                              const siguiente = idx < estados.length - 1 ? estados[idx + 1] : null
-                              if (!siguiente) return
-                              doctorService.actualizarTratamiento(tratamiento._id, {
-                                ...tratamiento,
-                                estado: siguiente,
-                                fechaCompletado: siguiente === 'completado' ? new Date().toISOString() : undefined
-                              }).then(result => {
-                                if (result.success) {
-                                  mostrarToast(`✅ Estado actualizado a ${ESTADOS.find(e => e.valor === siguiente)?.label}`)
-                                  cargarTratamientos()
-                                }
-                              })
-                            }}
-                            className="text-xs text-emerald-700 hover:bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-300 transition-colors"
-                            title="Avanzar estado"
-                          >
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setConfirmarEliminar(tratamiento._id)}
-                            className="text-xs text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-lg border border-red-300 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {citaId && (
+                            <>
+                              <button
+                                onClick={() => { setEditandoTratamiento(tratamiento); setMostrarFormulario(true) }}
+                                className="text-xs text-primary hover:bg-primary/10 px-2 py-1.5 rounded-lg border border-primary/30 transition-colors"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const estados = ['pendiente', 'en_progreso', 'completado', 'cancelado']
+                                  const idx = estados.indexOf(tratamiento.estado)
+                                  const siguiente = idx < estados.length - 1 ? estados[idx + 1] : null
+                                  if (!siguiente) return
+                                  doctorService.actualizarTratamiento(tratamiento._id, {
+                                    ...tratamiento,
+                                    estado: siguiente,
+                                    fechaCompletado: siguiente === 'completado' ? new Date().toISOString() : undefined
+                                  }).then(result => {
+                                    if (result.success) {
+                                      mostrarToast(`✅ Estado actualizado a ${ESTADOS.find(e => e.valor === siguiente)?.label}`)
+                                      cargarTratamientos()
+                                    }
+                                  })
+                                }}
+                                className="text-xs text-emerald-700 hover:bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-300 transition-colors"
+                                title="Avanzar estado"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmarEliminar(tratamiento._id)}
+                                className="text-xs text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-lg border border-red-300 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
 
