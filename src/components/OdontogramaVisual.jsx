@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 
 const COLOR_MAP = {
   ROJO: '#ef4444',
@@ -851,7 +851,7 @@ const InfoPie = ({ odontograma }) => (
 )
 
 // ── MAIN COMPONENT ─────────────────────────────────────────
-const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) => {
+const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate, readOnly = false }) => {
   // Estado unificado por diente: { superficies: {}, recesion, movilidad }
   const [datosPorDiente, setDatosPorDiente] = useState(() => {
     const map = {}
@@ -878,7 +878,17 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
   const [selectorAbierto, setSelectorAbierto] = useState(null)
   const [inlineAbierto, setInlineAbierto] = useState(null)
 
+  // Track last update timestamp to prevent overwriting local changes
+  const lastFechaActualizacionRef = useRef(null)
+
   useEffect(() => {
+    // Only update local state if the server data is newer (different fechaActualizacion)
+    const nuevaFecha = odontograma?.fechaActualizacion
+    if (nuevaFecha && nuevaFecha === lastFechaActualizacionRef.current) {
+      // Server data hasn't changed, keep local state
+      return
+    }
+
     const map = {}
     if (odontograma?.dientes) {
       odontograma.dientes.forEach((d) => {
@@ -890,6 +900,7 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
       })
     }
     setDatosPorDiente(map)
+    lastFechaActualizacionRef.current = nuevaFecha
   }, [odontograma])
 
   const handleAbrirSelector = useCallback((diente, data) => {
@@ -956,28 +967,30 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate }) =
         />
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[290px_1fr]">
-        <aside className="order-2 xl:order-1">
-          {selectorAbierto ? (
-            <SelectorClinico
-              modo="panel"
-              diente={selectorAbierto.diente}
-              superficie={selectorAbierto.superficie}
-              simbolosActuales={selectorAbierto.simbolosActuales}
-              onAccept={(nuevoEstado) =>
-                handleSelectorAccept(selectorAbierto.diente, selectorAbierto.superficie, nuevoEstado)
-              }
-              onClose={() => setSelectorAbierto(null)}
-            />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-secondary/40 bg-gradient-to-br from-secondary/10 to-primary/5 p-4 text-sm text-gray-600 xl:sticky xl:top-4">
-              <p className="font-bold text-gray-800">Panel de edición</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                Selecciona una superficie dental del odontograma para registrar patologías, tratamientos o pérdidas.
-              </p>
-            </div>
-          )}
-        </aside>
+      <div className={`grid gap-4 ${readOnly ? 'xl:grid-cols-1' : 'xl:grid-cols-[290px_1fr]'}`}>
+        {!readOnly && (
+          <aside className="order-2 xl:order-1">
+            {selectorAbierto ? (
+              <SelectorClinico
+                modo="panel"
+                diente={selectorAbierto.diente}
+                superficie={selectorAbierto.superficie}
+                simbolosActuales={selectorAbierto.simbolosActuales}
+                onAccept={(nuevoEstado) =>
+                  handleSelectorAccept(selectorAbierto.diente, selectorAbierto.superficie, nuevoEstado)
+                }
+                onClose={() => setSelectorAbierto(null)}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-secondary/40 bg-gradient-to-br from-secondary/10 to-primary/5 p-4 text-sm text-gray-600 xl:sticky xl:top-4">
+                <p className="font-bold text-gray-800">Panel de edición</p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Selecciona una superficie dental del odontograma para registrar patologías, tratamientos o pérdidas.
+                </p>
+              </div>
+            )}
+          </aside>
+        )}
 
         <div className="order-1 overflow-x-auto xl:order-2">
           <HcuOdontogramaLayout

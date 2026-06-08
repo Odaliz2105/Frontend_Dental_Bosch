@@ -188,7 +188,14 @@ const TabCitas = ({ onAtender }) => {
         limit: 50
       })
       if (result.success) {
-        setCitas(result.data.datos?.citas || [])
+        const citasData = result.data.datos?.citas || []
+        // Sort appointments: newest to oldest (by date and time)
+        const citasOrdenadas = citasData.sort((a, b) => {
+          const fechaA = getFechaHoraCita(a)
+          const fechaB = getFechaHoraCita(b)
+          return fechaB - fechaA // Descending order (newest first)
+        })
+        setCitas(citasOrdenadas)
       }
     } catch (error) {
       console.error('Error cargando citas:', error)

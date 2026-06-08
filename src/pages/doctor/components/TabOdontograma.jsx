@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Activity, User, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Activity, User, Plus, X, ChevronDown, ChevronUp, Clock, AlertTriangle, Save } from 'lucide-react'
 import Button from '../../../components/Button'
 import doctorService from '../../../services/doctorService'
 import OdontogramaVisual from '../../../components/OdontogramaVisual'
@@ -55,7 +55,7 @@ const normalizarIndicadoresSaludBucal = (indicadores = {}) => ({
   }
 })
 
-const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaCita, onLimpiarPaciente }) => {
+const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaCita, horaInicioCita, horaFinCita, onLimpiarPaciente }) => {
   const [historial, setHistorial] = useState(null)
   const [cargandoHistorial, setCargandoHistorial] = useState(false)
   const [consultaSeleccionada, setConsultaSeleccionada] = useState(null)
@@ -68,6 +68,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
   const [actualizandoDiente, setActualizandoDiente] = useState(false)
   const [indicadoresSaludBucal, setIndicadoresSaludBucal] = useState(INITIAL_INDICADORES_SALUD_BUCAL)
   const [guardandoIndicadores, setGuardandoIndicadores] = useState(false)
+  const [cambiosPendientes, setCambiosPendientes] = useState(false)
 
   const cargarHistorial = async () => {
     setCargandoHistorial(true)
@@ -255,10 +256,10 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     })
   }
 
-  const handleGuardarIndicadores = async () => {
+  const handleGuardarTodo = async () => {
     if (!consultaSeleccionada) return
     if (!puedeEditarConsulta(consultaSeleccionada)) {
-      mostrarToast('Solo puedes editar indicadores de la consulta asociada a la cita actual', 'error')
+      mostrarToast('Solo puedes guardar cambios de la consulta asociada a la cita actual', 'error')
       return
     }
 
@@ -278,9 +279,10 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
           consulta._id === consultaSeleccionada._id ? consultaActualizada : consulta
         )
       }))
-      mostrarToast('✅ Indicadores de salud bucal guardados')
+      setCambiosPendientes(false)
+      mostrarToast('✅ Odontograma e indicadores guardados correctamente')
     } else {
-      mostrarToast(result.error || 'Error al guardar indicadores de salud bucal', 'error')
+      mostrarToast(result.error || 'Error al guardar. La cita puede haber finalizado.', 'error')
     }
     setGuardandoIndicadores(false)
   }
@@ -323,6 +325,27 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
 
   const consultasEditables = consultas.filter(consulta => puedeEditarConsulta(consulta))
 
+  // Verificar si la cita está por finalizar (15 minutos antes)
+  const citaPorFinalizar = () => {
+    if (!horaFinCita) return false
+    const ahora = new Date()
+    const [horas, minutos] = horaFinCita.split(':').map(Number)
+    const finCita = new Date()
+    finCita.setHours(horas, minutos, 0, 0)
+    const minutosRestantes = (finCita - ahora) / 1000 / 60
+    return minutosRestantes > 0 && minutosRestantes <= 15
+  }
+
+  // Verificar si la cita ya finalizó
+  const citaFinalizada = () => {
+    if (!horaFinCita) return false
+    const ahora = new Date()
+    const [horas, minutos] = horaFinCita.split(':').map(Number)
+    const finCita = new Date()
+    finCita.setHours(horas, minutos, 0, 0)
+    return ahora > finCita
+  }
+
   return (
     <div className="space-y-6">
       {/* Toast */}
@@ -353,6 +376,40 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
           </Button>
         )}
       </div>
+
+      {/* Advertencia: Cita por finalizar */}
+      {citaPorFinalizar() && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-amber-800 text-sm">La cita finaliza pronto</p>
+            <p className="text-amber-700 text-xs mt-1">
+              La cita termina a las {horaFinCita}. Guarda tus cambios antes de que finalice.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Advertencia: Cita finalizada */}
+      {citaFinalizada() && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3"
+        >
+          <Clock className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-red-800 text-sm">La cita ha finalizado</p>
+            <p className="text-red-700 text-xs mt-1">
+              La hora de la cita ({horaFinCita}) ha pasado. Los cambios pueden no guardarse. Contacta al administrador si necesitas más tiempo.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {!pacienteSeleccionadoId ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
@@ -536,11 +593,13 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
                 </div>
                 <Button
                   type="button"
-                  onClick={handleGuardarIndicadores}
+                  onClick={handleGuardarTodo}
                   loading={guardandoIndicadores}
                   disabled={guardandoIndicadores}
+                  className="bg-primary hover:bg-primary/90"
                 >
-                  Guardar indicadores
+                  <Save className="w-4 h-4 mr-2" />
+                  Guardar todo
                 </Button>
               </div>
 

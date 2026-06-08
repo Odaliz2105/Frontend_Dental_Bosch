@@ -467,6 +467,72 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
                 </div>
               )}
 
+              {/* Indicadores de Salud Bucal */}
+              {consulta.indicadoresSaludBucal && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Indicadores de Salud Bucal
+                  </p>
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    {/* CPO Index */}
+                    {consulta.indicadoresSaludBucal.indiceCPO && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-gray-600">Índice CPO:</span>
+                        <div className="flex gap-2">
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            C: {consulta.indicadoresSaludBucal.indiceCPO.C || 0}
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            P: {consulta.indicadoresSaludBucal.indiceCPO.P || 0}
+                          </span>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            O: {consulta.indicadoresSaludBucal.indiceCPO.O || 0}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Higiene Oral */}
+                    {consulta.indicadoresSaludBucal.higieneOral && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-medium text-gray-600">Higiene:</span>
+                        {Object.entries(consulta.indicadoresSaludBucal.higieneOral).map(([key, val]) => (
+                          <span key={key} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">
+                            {key === 'calculo' ? 'Cálculo' : key}: {val}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Enfermedad Periodontal */}
+                    {consulta.indicadoresSaludBucal.enfermedadPeriodontal && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-600">Periodontal:</span>
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                          {consulta.indicadoresSaludBucal.enfermedadPeriodontal}
+                        </span>
+                      </div>
+                    )}
+                    {/* Maloclusión */}
+                    {consulta.indicadoresSaludBucal.maloclusion && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-600">Maloclusión:</span>
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                          {consulta.indicadoresSaludBucal.maloclusion}
+                        </span>
+                      </div>
+                    )}
+                    {/* Fluorosis */}
+                    {consulta.indicadoresSaludBucal.fluorosis && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-600">Fluorosis:</span>
+                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+                          {consulta.indicadoresSaludBucal.fluorosis}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Odontograma */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -487,6 +553,7 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
                   ) : (
                     <OdontogramaVisual
                       odontograma={odontogramaDetalle}
+                      readOnly={true}
                     />
                 )}
               </div>

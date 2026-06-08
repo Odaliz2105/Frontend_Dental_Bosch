@@ -64,24 +64,86 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
     setCargando(true)
     try {
       const hoy = new Date()
-      const hoyStr = hoy.toISOString().split('T')[0]
+      // Helper to format date as YYYY-MM-DD using local timezone
+      const formatFechaLocal = (fecha) => {
+        const d = new Date(fecha)
+        const año = d.getFullYear()
+        const mes = String(d.getMonth() + 1).padStart(2, '0')
+        const dia = String(d.getDate()).padStart(2, '0')
+        return `${año}-${mes}-${dia}`
+      }
+      const hoyStr = formatFechaLocal(hoy)
 
       const citasResult = await doctorService.getDoctorCitas({ page: 1, limit: 50 })
 
       let citasHoy = 0
       let pacientesActivos = 0
+      let historiasMes = 0
+      let tratamientosActivos = 0
 
       if (citasResult.success) {
         const todasCitas = citasResult.data.datos?.citas || []
-        citasHoy = todasCitas.filter(c => {
-          const fc = c.fecha ? new Date(c.fecha).toISOString().split('T')[0] : ''
-          return fc === hoyStr
-        }).length
-        pacientesActivos = new Set(todasCitas.map(c => c.paciente?.id || c.paciente?._id).filter(Boolean)).size
+
+        // Get today's appointments with proper local date comparison
+        const citasDeHoy = todasCitas.filter(c => {
+          if (!c.fecha) return false
+          return formatFechaLocal(c.fecha) === hoyStr
+        })
+        citasHoy = citasDeHoy.length
+
+        // Get unique patients with appointments TODAY
+        const pacientesHoy = new Set(
+          citasDeHoy.map(c => c.paciente?.id || c.paciente?._id).filter(Boolean)
+        )
+        pacientesActivos = pacientesHoy.size
+
+        // Get start of current month for "Historias Este Mes"
+        const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+
+        // Count all consultations created this month from all patients' histories
+        let consultasMes = 0
+        const pacientesIds = [...new Set(todasCitas.map(c => c.paciente?.id || c.paciente?._id).filter(Boolean))]
+
+        // Fetch clinical histories for patients to count consultations this month
+        const historiasPromises = pacientesIds.map(pid => doctorService.getHistorialClinico(pid))
+        const historiasResults = await Promise.allSettled(historiasPromises)
+
+        historiasResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.success) {
+            const historial = result.value.data.datos
+            if (historial?.consultas?.length > 0) {
+              // Count consultations created this month
+              const consultasDelMes = historial.consultas.filter(consulta => {
+                const fechaConsulta = consulta.fecha ? new Date(consulta.fecha) : null
+                return fechaConsulta && fechaConsulta >= inicioMes
+              })
+              consultasMes += consultasDelMes.length
+            }
+          }
+        })
+        historiasMes = consultasMes
+
+        // Count active treatments (not cancelled or completed) for all patients
+        let tratamientosActivosCount = 0
+        const tratamientosPromises = pacientesIds.map(pid => doctorService.getTratamientosPaciente(pid))
+        const tratamientosResults = await Promise.allSettled(tratamientosPromises)
+
+        tratamientosResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.success) {
+            const tratamientos = result.value.data.data || []
+            // Active treatments: pendiente or en_progreso (not completado or cancelado)
+            const activos = tratamientos.filter(t =>
+              t.estado === 'pendiente' || t.estado === 'en_progreso'
+            )
+            tratamientosActivosCount += activos.length
+          }
+        })
+        tratamientosActivos = tratamientosActivosCount
+
         setCitas(todasCitas)
       }
 
-      setStats({ citasHoy, pacientesActivos, historiasMes: 0, tratamientosActivos: 0 })
+      setStats({ citasHoy, pacientesActivos, historiasMes, tratamientosActivos })
     } catch (error) {
       console.error('❌ DoctorDashboard - Error general:', error)
     } finally {
@@ -213,12 +275,6 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {estadisticasPendientes > 0 && (
-                <span className="hidden sm:flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-1.5 rounded-full border border-amber-200">
-                  <Clock size={12} />
-                  {estadisticasPendientes} pendiente(s)
-                </span>
-              )}
               <span className="hidden sm:flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-200">
                 <Stethoscope size={12} /> Doctor
               </span>
