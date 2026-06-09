@@ -180,7 +180,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       setOdontograma(prev => {
         if (!prev) return prev
         const nuevosDientes = prev.dientes.map(d => {
-          if (d._id === diente._id || d.codigoFDI === diente.codigoFDI) {
+          if (d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)) {
             return {
               ...d,
               superficiesClasico: superficiesActualizadas,
@@ -220,7 +220,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       setOdontograma(prev => {
         if (!prev) return prev
         const nuevosDientes = prev.dientes.map(d => {
-          if (d._id === diente._id || d.codigoFDI === diente.codigoFDI) {
+          if (d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)) {
             return {
               ...d,
               [field]: value
@@ -346,6 +346,8 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     return ahora > finCita
   }
 
+  const puedeEditarOdontograma = puedeEditarConsulta(consultaSeleccionada)
+
   return (
     <div className="space-y-6">
       {/* Toast */}
@@ -405,7 +407,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
           <div>
             <p className="font-medium text-red-800 text-sm">La cita ha finalizado</p>
             <p className="text-red-700 text-xs mt-1">
-              La hora de la cita ({horaFinCita}) ha pasado. Los cambios pueden no guardarse. Contacta al administrador si necesitas más tiempo.
+              La cita terminó a las {horaFinCita}. Para editar el odontograma, extiende la cita desde Mis Citas o crea una nueva consulta en Historias Clínicas.
             </p>
           </div>
         </motion.div>
@@ -572,8 +574,8 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
 
               <OdontogramaVisual 
                 odontograma={odontograma}
-                onSuperficieClick={puedeEditarConsulta(consultaSeleccionada) ? handleSuperficieClick : null}
-                onDienteUpdate={puedeEditarConsulta(consultaSeleccionada) ? handleDienteUpdate : null}
+                onSuperficieClick={puedeEditarOdontograma ? handleSuperficieClick : null}
+                onDienteUpdate={puedeEditarOdontograma ? handleDienteUpdate : null}
               />
             </motion.div>
           )}

@@ -282,11 +282,18 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
     if (!consultaEdit || odontograma) return
     setCargandoOdontograma(true)
     const result = await doctorService.verOdontogramaVisual(pacienteId, consultaEdit._id)
-    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma
-    if (result.success && odontogramaData) {
+    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma || result.data
+    if (result.success && odontogramaData?.dientes) {
       setOdontograma(odontogramaData)
       setTipoDenticion(odontogramaData.tipoDenticion || 'permanente')
-    } else if (!result.success) {
+    } else if (result.success) {
+      const result2 = await doctorService.verOdontograma(pacienteId, consultaEdit._id)
+      const odontogramaData2 = result2.data?.odontograma || result2.data?.datos?.odontograma || result2.data
+      if (result2.success && odontogramaData2?.dientes) {
+        setOdontograma(odontogramaData2)
+        setTipoDenticion(odontogramaData2.tipoDenticion || 'permanente')
+      }
+    } else {
       setError(result.error || 'Error al cargar odontograma')
     }
     setCargandoOdontograma(false)
@@ -312,9 +319,13 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
       setOdontograma(prev => ({
         ...prev,
         dientes: prev.dientes.map(d =>
-          d._id === diente._id ? { ...d, estadoGeneral, superficiesClasico: superficiesActualizadas } : d
+          d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)
+            ? { ...d, estadoGeneral, superficiesClasico: superficiesActualizadas }
+            : d
         )
       }))
+    } else {
+      setError(result.error || 'Error al guardar superficie dental')
     }
   }
 
@@ -328,9 +339,13 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
       setOdontograma(prev => ({
         ...prev,
         dientes: prev.dientes.map(d =>
-          d._id === diente._id ? { ...d, [field]: value } : d
+          d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)
+            ? { ...d, [field]: value }
+            : d
         )
       }))
+    } else {
+      setError(result.error || 'Error al actualizar diente')
     }
   }
 
@@ -344,6 +359,15 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
     const odontogramaData = result.data?.datos?.odontograma || result.data?.odontograma
     if (result.success && odontogramaData) {
       setOdontograma(odontogramaData)
+    } else if (result.error?.includes?.('ya tiene un odontograma')) {
+      const carga = await doctorService.verOdontogramaVisual(pacienteId, consultaEdit._id)
+      const existente = carga.data?.odontograma || carga.data?.datos?.odontograma || carga.data
+      if (carga.success && existente?.dientes) {
+        setOdontograma(existente)
+        setTipoDenticion(existente.tipoDenticion || tipoDenticion)
+      } else {
+        setError('El odontograma ya existe pero no se pudo cargar')
+      }
     } else {
       setError(result.error || 'Error al inicializar el odontograma')
     }

@@ -74,6 +74,8 @@ const OPCIONES_MOVILIDAD = [
 ]
 
 // ── HELPERS ────────────────────────────────────────────────
+const getToothKey = (diente) => diente?.codigoFDI || diente?._id
+
 const migrarSuperficie = (s) => {
   if (s === null || s === undefined) {
     return { color: null, tratamiento: null, patologia: null, simbolos: [] }
@@ -260,14 +262,15 @@ const clonarSuperficiesHCU = (superficies = {}) => {
 }
 
 const obtenerSuperficiesHCUDeDiente = (diente) => {
-  const raw = diente.superficies || diente.superficiesClasico || {}
-  if (diente.superficies) return clonarSuperficiesHCU(superficiesBackendAHCU(raw))
-
-  const superficies = {}
-  for (const k of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
-    superficies[k] = clonarEstadoSuperficie(migrarSuperficie(raw[k]))
+  if (diente.superficiesClasico) {
+    const superficies = {}
+    for (const k of ['arriba', 'abajo', 'izquierda', 'derecha', 'centro']) {
+      superficies[k] = clonarEstadoSuperficie(migrarSuperficie(diente.superficiesClasico[k]))
+    }
+    return superficies
   }
-  return superficies
+  const raw = diente.superficies || {}
+  return clonarSuperficiesHCU(superficiesBackendAHCU(raw))
 }
 
 // ── TOOTH COMPONENTS ───────────────────────────────────────
@@ -360,7 +363,7 @@ const RendTooth = ({ diente, superficiesMap, onAbrirSelector, esTemporal, bloque
   return (
     <div className="flex items-center justify-center" title={bloqueado ? 'No editable para este tipo de dentición' : ''}>
       <ToothComp
-        superficies={superficiesMap[diente._id] || {}}
+        superficies={superficiesMap[getToothKey(diente)] || {}}
         onAbrirSelector={onAbrirSelector ? (data) => onAbrirSelector(diente, data) : undefined}
         bloqueado={bloqueado}
       />
@@ -544,26 +547,26 @@ const ArchSection = ({ titulo, cuadrantes, dientesPorCuadrante, superficiesMap, 
   const labelClsR = 'flex items-center justify-end text-[9px] font-bold text-gray-700 uppercase border-l border-black bg-blue-100 px-1'
 
   const renderFDI = (d) => (
-    <div key={d._id} className="flex items-center justify-center py-px">
+    <div key={getToothKey(d)} className="flex items-center justify-center py-px">
       <span className="text-[8px] font-bold font-mono text-gray-600">{d.codigoFDI}</span>
     </div>
   )
 
   const renderLingual = (d) => {
-    const s = migrarSuperficie(superficiesMap[d._id]?.abajo)
+    const s = migrarSuperficie(superficiesMap[getToothKey(d)]?.abajo)
     const c = s.color === 'ROJO' ? 'bg-red-500' : s.color === 'AZUL' ? 'bg-blue-500' : 'bg-transparent'
     return (
-      <div key={d._id} className="flex items-center justify-center py-px">
+      <div key={getToothKey(d)} className="flex items-center justify-center py-px">
         <span className={`inline-block w-2 h-2 rounded-full border border-black ${c}`} />
       </div>
     )
   }
 
   const renderValor = (d, field) => {
-    const val = datosPorDiente?.[d._id]?.[field]
+    const val = datosPorDiente?.[getToothKey(d)]?.[field]
     return (
       <div
-        key={d._id}
+        key={getToothKey(d)}
         className="flex items-center justify-center py-px text-[8px] text-gray-600 font-mono cursor-pointer hover:bg-gray-100"
         onClick={(e) => {
           e.stopPropagation()
@@ -577,7 +580,7 @@ const ArchSection = ({ titulo, cuadrantes, dientesPorCuadrante, superficiesMap, 
   }
 
   const renderToothCell = (d) => (
-    <RendTooth key={d._id} diente={d} superficiesMap={superficiesMap} onAbrirSelector={onAbrirSelector} esTemporal={esTemporal} />
+    <RendTooth key={getToothKey(d)} diente={d} superficiesMap={superficiesMap} onAbrirSelector={onAbrirSelector} esTemporal={esTemporal} />
   )
 
   return (
@@ -653,7 +656,7 @@ const HcuFilaValores = ({ label, orden, dientesPorCodigo, datosPorDiente, field,
     <HcuLabel>{label}</HcuLabel>
     {orden.map((codigo, index) => {
       const diente = dientesPorCodigo.get(codigo)
-      const value = diente ? datosPorDiente?.[diente._id]?.[field] : null
+      const value = diente ? datosPorDiente?.[getToothKey(diente)]?.[field] : null
       return (
         <React.Fragment key={`${field}-${codigo}`}>
           {index === 8 && <div />}
@@ -857,7 +860,7 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate, rea
     const map = {}
     if (odontograma?.dientes) {
       odontograma.dientes.forEach((d) => {
-        map[d._id] = {
+        map[getToothKey(d)] = {
           superficies: obtenerSuperficiesHCUDeDiente(d),
           recesion: d.recesion ?? null,
           movilidad: d.movilidad ?? null,
@@ -892,7 +895,7 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate, rea
     const map = {}
     if (odontograma?.dientes) {
       odontograma.dientes.forEach((d) => {
-        map[d._id] = {
+        map[getToothKey(d)] = {
           superficies: obtenerSuperficiesHCUDeDiente(d),
           recesion: d.recesion ?? null,
           movilidad: d.movilidad ?? null,
@@ -913,16 +916,16 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate, rea
       const estadoClonado = clonarEstadoSuperficie(nuevoEstado)
       setDatosPorDiente((prev) => ({
         ...prev,
-        [diente._id]: {
-          ...prev[diente._id],
-          superficies: { ...prev[diente._id].superficies, [superficie]: estadoClonado },
+        [getToothKey(diente)]: {
+          ...prev[getToothKey(diente)],
+          superficies: { ...prev[getToothKey(diente)].superficies, [superficie]: estadoClonado },
         },
       }))
       setSelectorAbierto(null)
 
       if (onSuperficieClick) {
         const updatedSuperficies = {
-          ...datosPorDiente[diente._id].superficies,
+          ...datosPorDiente[getToothKey(diente)].superficies,
           [superficie]: estadoClonado,
         }
         
@@ -943,7 +946,7 @@ const OdontogramaVisual = ({ odontograma, onSuperficieClick, onDienteUpdate, rea
     (diente, field, value) => {
       setDatosPorDiente((prev) => ({
         ...prev,
-        [diente._id]: { ...prev[diente._id], [field]: value },
+        [getToothKey(diente)]: { ...prev[getToothKey(diente)], [field]: value },
       }))
       setInlineAbierto(null)
 
