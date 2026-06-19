@@ -379,7 +379,17 @@ const LandingPage = () => {
           </div>
           
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Dental Bosch. Todos los derechos reservados.</p>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p>&copy; 2024 Dental Bosch. Todos los derechos reservados.</p>
+              <div className="flex gap-6 text-sm">
+                <Link to="/privacy" className="hover:text-primary transition-colors">
+                  Política de Privacidad
+                </Link>
+                <Link to="/terms" className="hover:text-primary transition-colors">
+                  Términos del Servicio
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

@@ -152,13 +152,21 @@ const ServicesPage = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6 text-center sm:text-left">
+            <div className="flex items-center">
               <Logo />
             </div>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm">
               © 2024 Dental Bosch. Todos los derechos reservados.
             </p>
+            <div className="flex gap-6 text-sm text-gray-400">
+              <Link to="/privacy" className="hover:text-primary transition-colors">
+                Política de Privacidad
+              </Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">
+                Términos del Servicio
+              </Link>
+            </div>
           </div>
         </div>
       </footer>

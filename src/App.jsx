@@ -16,6 +16,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import RoleBasedDashboard from './components/RoleBasedDashboard'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import ServicesPage from './pages/ServicesPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 
 function App() {
   return (
@@ -34,6 +36,8 @@ function App() {
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/recuperar-password/:token" element={<ResetPasswordPage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             
             {/* Rutas protegidas */}
             <Route 
