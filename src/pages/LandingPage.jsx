@@ -15,8 +15,7 @@ import {
   ArrowRight,
   Smartphone,
   X,
-  PlayCircle,
-  Apple
+  Download
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Button from '../components/Button'
@@ -83,32 +82,19 @@ const AppModal = ({ showAppModal, setShowAppModal }) => (
               ))}
             </div>
 
-            {/* Botones de descarga */}
-            <div className="space-y-3">
-              <button
-                className="w-full flex items-center justify-center gap-3 bg-black text-white py-3.5 rounded-xl hover:bg-gray-900 transition-colors font-medium"
-                onClick={() => {
-                  // TODO: agregar link real de App Store
-                  alert('Próximamente en App Store')
-                }}
-              >
-                <Apple size={20} />
-                Descargar en App Store
-              </button>
-              <button
-                className="w-full flex items-center justify-center gap-3 bg-primary text-white py-3.5 rounded-xl hover:bg-primary/90 transition-colors font-medium"
-                onClick={() => {
-                  // TODO: agregar link real de Google Play
-                  alert('Próximamente en Google Play')
-                }}
-              >
-                <PlayCircle size={20} />
-                Descargar en Google Play
-              </button>
-            </div>
+            {/* Botón de descarga */}
+            <a
+              href="https://drive.google.com/drive/folders/1EPWnVI_3bKyHwBH9dlgu-_4HFAoDS9dB?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-3 bg-primary text-white py-4 rounded-xl hover:bg-primary/90 transition-colors font-semibold text-lg shadow-lg hover:shadow-primary/30"
+            >
+              <Download size={22} />
+              Descargar APK para Android
+            </a>
 
             <p className="text-center text-xs text-gray-400 mt-4">
-              Disponible para iOS y Android
+              Descarga directa · Solo para Android
             </p>
           </motion.div>
         </motion.div>
