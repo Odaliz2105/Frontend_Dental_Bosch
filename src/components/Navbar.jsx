@@ -28,12 +28,14 @@ const Navbar = ({ isMenuOpen, setIsMenuOpen, user }) => {
             >
               Servicios
             </Link>
-            <Link 
-              to="/contact" 
+            <a 
+              href="https://wa.me/593984062668?text=Hola%2C%20me%20gustar%C3%ADa%20agendar%20una%20cita%20en%20Dental%20Bosch" 
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-gray-700 hover:text-primary transition-colors font-medium"
             >
               Contacto
-            </Link>
+            </a>
             
             {user ? (
               <div className="flex items-center space-x-4">
@@ -117,13 +119,15 @@ const Navbar = ({ isMenuOpen, setIsMenuOpen, user }) => {
               >
                 Servicios
               </Link>
-              <Link 
-                to="/contact" 
+              <a 
+                href="https://wa.me/593984062668?text=Hola%2C%20me%20gustar%C3%ADa%20agendar%20una%20cita%20en%20Dental%20Bosch" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block text-gray-700 hover:text-primary transition-colors font-medium py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contacto
-              </Link>
+              </a>
               
               {user ? (
                 <Link 
