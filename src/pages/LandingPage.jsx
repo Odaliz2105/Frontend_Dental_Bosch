@@ -9,7 +9,6 @@ import {
   Star,
   CheckCircle,
   Phone,
-  Mail,
   MapPin,
   Calendar,
   ArrowRight,
@@ -331,8 +330,17 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <Logo size="medium" className="mb-4" />
-              <p className="text-gray-400">
-                Expertos en ortodoncia y salud bucal, transformando sonrisas con tecnología de punta.
+              <p className="text-gray-400 italic mb-2">
+                "La magia está en tu sonrisa!"
+              </p>
+              <p className="text-gray-400 text-sm">
+                Dra. Elisabel Bosch Lozano
+              </p>
+              <p className="text-gray-400 text-sm">
+                Odontóloga General
+              </p>
+              <p className="text-gray-400 text-sm">
+                Especialista en Ortodoncia
               </p>
             </div>
             
@@ -344,13 +352,20 @@ const LandingPage = () => {
                   <span>098 406 2668</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Mail size={16} />
-                  <span>info@dentalbosch.com</span>
+                  <Phone size={16} />
+                  <span>098 726 9303</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone size={16} />
+                  <span>2545275</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <MapPin size={16} className="flex-shrink-0 mt-1" />
                   <span>Avenida 10 de Agosto N21, 2do piso 182, Oficina 202, Quito</span>
                 </div>
+                <p className="text-primary font-semibold text-sm mt-3">
+                  Atención con cita previa
+                </p>
               </div>
             </div>
             
