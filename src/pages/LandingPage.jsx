@@ -341,15 +341,15 @@ const LandingPage = () => {
               <div className="space-y-2 text-gray-400">
                 <div className="flex items-center gap-2">
                   <Phone size={16} />
-                  <span>+1 234 567 890</span>
+                  <span>098 406 2668</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail size={16} />
                   <span>info@dentalbosch.com</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={16} />
-                  <span>123 Calle Principal, Ciudad</span>
+                <div className="flex items-start gap-2">
+                  <MapPin size={16} className="flex-shrink-0 mt-1" />
+                  <span>Avenida 10 de Agosto N21, 2do piso 182, Oficina 202, Quito</span>
                 </div>
               </div>
             </div>
@@ -357,8 +357,12 @@ const LandingPage = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Horario</h3>
               <div className="text-gray-400 space-y-1">
-                <p>Lunes - Viernes: 9:00 AM - 6:00 PM</p>
-                <p>Sábado: 9:00 AM - 2:00 PM</p>
+                <p>Lunes: 9 a.m. – 7 p.m.</p>
+                <p>Martes: 9 a.m. – 7 p.m.</p>
+                <p>Miércoles: 9 a.m. – 7 p.m.</p>
+                <p>Jueves: 9 a.m. – 7 p.m.</p>
+                <p>Viernes: 9 a.m. – 7 p.m.</p>
+                <p>Sábado: Cerrado</p>
                 <p>Domingo: Cerrado</p>
               </div>
             </div>
