@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import Button from '../components/Button'
+import Navbar from '../components/Navbar'
 
 const AppModal = ({ showAppModal, setShowAppModal }) => (
   <AnimatePresence>
@@ -93,6 +94,7 @@ const AppModal = ({ showAppModal, setShowAppModal }) => (
 
 const ServicesPage = () => {
   const [showAppModal, setShowAppModal] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const services = [
     {
@@ -203,18 +205,7 @@ const ServicesPage = () => {
     <div className="min-h-screen bg-gray-50">
       <AppModal showAppModal={showAppModal} setShowAppModal={setShowAppModal} />
       
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center text-primary hover:text-primary/80 transition-colors">
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              <span className="font-medium">Volver al inicio</span>
-            </Link>
-            <Logo />
-          </div>
-        </div>
-      </div>
+      <Navbar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-secondary text-white py-24">
