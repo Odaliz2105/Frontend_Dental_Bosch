@@ -317,11 +317,11 @@ const RegisterPage = () => {
                 />
                 <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
                   Acepto los{' '}
-                  <Link to="/terminos" className="text-primary hover:text-primary/80">
+                  <Link to="/terms" target="_blank" className="text-primary hover:text-primary/80 underline">
                     términos y condiciones
                   </Link>{' '}
                   y la{' '}
-                  <Link to="/privacidad" className="text-primary hover:text-primary/80">
+                  <Link to="/privacy" target="_blank" className="text-primary hover:text-primary/80 underline">
                     política de privacidad
                   </Link>
                 </label>
