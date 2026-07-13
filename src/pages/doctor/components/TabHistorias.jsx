@@ -102,25 +102,38 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
 
   const cargarOdontogramaDetalle = async () => {
     setCargandoOdontogramaDetalle(true)
-    const result = await doctorService.verOdontogramaVisual(pacienteId, consulta._id)
-    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma || result.data
-    
-    if (result.success && odontogramaData?.dientes) {
-      setOdontogramaDetalle(odontogramaData)
-      setErrorOdontogramaDetalle(null)
-    } else if (result.success) {
-      const result2 = await doctorService.verOdontograma(pacienteId, consulta._id)
-      const odontogramaData2 = result2.data?.odontograma || result2.data?.datos?.odontograma || result2.data
-      if (result2.success && odontogramaData2?.dientes) {
-        setOdontogramaDetalle(odontogramaData2)
+    let odontogramaExtraido = null
+
+    try {
+      // Intento 1: Ruta visual
+      const result1 = await doctorService.verOdontogramaVisual(pacienteId, consulta._id)
+      if (result1.success) {
+        odontogramaExtraido = result1.data?.odontograma || result1.data?.datos?.odontograma || result1.data
+      } else {
+        // Intento 2: Ruta normal (si la visual falla, por ej. da 404)
+        const result2 = await doctorService.verOdontograma(pacienteId, consulta._id)
+        if (result2.success) {
+          odontogramaExtraido = result2.data?.odontograma || result2.data?.datos?.odontograma || result2.data
+        }
+      }
+
+      // Intento 3: Si vino poblado en la misma consulta
+      if (!odontogramaExtraido && consulta.odontograma) {
+        odontogramaExtraido = consulta.odontograma
+      }
+
+      if (odontogramaExtraido && typeof odontogramaExtraido === 'object') {
+        setOdontogramaDetalle(odontogramaExtraido)
         setErrorOdontogramaDetalle(null)
       } else {
         setOdontogramaDetalle(null)
+        setErrorOdontogramaDetalle(null) // No mostramos error si es que simplemente no tiene odontograma
       }
-    } else {
+    } catch (error) {
       setOdontogramaDetalle(null)
-      setErrorOdontogramaDetalle(result.error || 'Error al cargar odontograma')
+      setErrorOdontogramaDetalle('Error al comunicarse con el servidor para el odontograma')
     }
+    
     setCargandoOdontogramaDetalle(false)
   }
 
