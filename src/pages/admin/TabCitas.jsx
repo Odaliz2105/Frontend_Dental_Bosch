@@ -133,13 +133,14 @@ const TabCitas = () => {
   const puedeReasignarCita = (cita) => {
     if (!cita || cita.estado !== 'pendiente') return false
 
-    const hora = cita.horaInicio || cita.hora || '00:00'
-    const fecha = new Date(cita.fecha)
-    const [horas, minutos] = hora.split(':').map(Number)
+    const fechaCita = new Date(cita.fecha)
+    const hoy = new Date()
+    
+    // Comparamos solo la fecha, permitiendo reasignar citas de hoy o del futuro
+    fechaCita.setHours(0, 0, 0, 0)
+    hoy.setHours(0, 0, 0, 0)
 
-    fecha.setHours(horas || 0, minutos || 0, 0, 0)
-
-    return fecha >= new Date()
+    return fechaCita >= hoy
   }
 
   useEffect(() => {
