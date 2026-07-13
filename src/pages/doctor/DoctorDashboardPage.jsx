@@ -58,7 +58,7 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
 
   useEffect(() => {
     cargarDatosDoctor()
-  }, [])
+  }, [tabActiva])
 
   const cargarDatosDoctor = async () => {
     setCargando(true)
@@ -87,7 +87,10 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
         // Get today's appointments with proper local date comparison
         const citasDeHoy = todasCitas.filter(c => {
           if (!c.fecha) return false
-          return formatFechaLocal(c.fecha) === hoyStr
+          const fechaCitaStr = typeof c.fecha === 'string' && c.fecha.includes('T')
+            ? c.fecha.split('T')[0]
+            : formatFechaLocal(c.fecha)
+          return fechaCitaStr === hoyStr
         })
         citasHoy = citasDeHoy.length
 
@@ -114,8 +117,13 @@ const DoctorDashboardPage = ({ initialTab } = {}) => {
             if (historial?.consultas?.length > 0) {
               // Count consultations created this month
               const consultasDelMes = historial.consultas.filter(consulta => {
-                const fechaConsulta = consulta.fecha ? new Date(consulta.fecha) : null
-                return fechaConsulta && fechaConsulta >= inicioMes
+                if (!consulta.fecha) return false
+                const fechaStr = typeof consulta.fecha === 'string' && consulta.fecha.includes('T')
+                  ? consulta.fecha.split('T')[0]
+                  : formatFechaLocal(consulta.fecha)
+                const [y, m, d] = fechaStr.split('-').map(Number)
+                const fechaConsulta = new Date(y, m - 1, d)
+                return fechaConsulta >= inicioMes
               })
               consultasMes += consultasDelMes.length
             }
