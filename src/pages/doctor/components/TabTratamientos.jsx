@@ -46,6 +46,18 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, citaId, onLim
           return id === citaId
         })
       }
+
+      // Si no encuentra por ID exacto de la cita, buscar la consulta de HOY (fallback)
+      if (!encontrada) {
+        const hoy = new Date()
+        encontrada = consultas.find(c => {
+          if (!c.fecha) return false
+          const fechaConsulta = new Date(c.fecha)
+          return fechaConsulta.getFullYear() === hoy.getFullYear() &&
+                 fechaConsulta.getMonth() === hoy.getMonth() &&
+                 fechaConsulta.getDate() === hoy.getDate()
+        })
+      }
       setConsultaActual(encontrada || null)
       // Extraer tratamientos de cada consulta y aplanarlos
       const tratamientosExtraidos = []

@@ -103,15 +103,23 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
   const cargarOdontogramaDetalle = async () => {
     setCargandoOdontogramaDetalle(true)
     const result = await doctorService.verOdontogramaVisual(pacienteId, consulta._id)
-    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma
-    if (result.success && odontogramaData) {
+    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma || result.data
+    
+    if (result.success && odontogramaData?.dientes) {
       setOdontogramaDetalle(odontogramaData)
       setErrorOdontogramaDetalle(null)
+    } else if (result.success) {
+      const result2 = await doctorService.verOdontograma(pacienteId, consulta._id)
+      const odontogramaData2 = result2.data?.odontograma || result2.data?.datos?.odontograma || result2.data
+      if (result2.success && odontogramaData2?.dientes) {
+        setOdontogramaDetalle(odontogramaData2)
+        setErrorOdontogramaDetalle(null)
+      } else {
+        setOdontogramaDetalle(null)
+      }
     } else {
       setOdontogramaDetalle(null)
-      if (!result.success) {
-        setErrorOdontogramaDetalle(result.error || 'Error al cargar odontograma')
-      }
+      setErrorOdontogramaDetalle(result.error || 'Error al cargar odontograma')
     }
     setCargandoOdontogramaDetalle(false)
   }
