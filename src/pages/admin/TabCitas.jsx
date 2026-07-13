@@ -133,10 +133,14 @@ const TabCitas = () => {
   const puedeReasignarCita = (cita) => {
     if (!cita || cita.estado !== 'pendiente') return false
 
-    const fechaCita = new Date(cita.fecha)
+    // Extraer solo año, mes y día de la fecha (normalmente viene como ISO string "YYYY-MM-DD...")
+    // para evitar que el ajuste de zona horaria lo mueva al día anterior.
+    const fechaString = typeof cita.fecha === 'string' ? cita.fecha.split('T')[0] : new Date(cita.fecha).toISOString().split('T')[0]
+    const [year, month, day] = fechaString.split('-').map(Number)
+    
+    const fechaCita = new Date(year, month - 1, day)
     const hoy = new Date()
     
-    // Comparamos solo la fecha, permitiendo reasignar citas de hoy o del futuro
     fechaCita.setHours(0, 0, 0, 0)
     hoy.setHours(0, 0, 0, 0)
 
