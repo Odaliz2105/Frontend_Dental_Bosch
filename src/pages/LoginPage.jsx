@@ -36,6 +36,23 @@ const LoginPage = () => {
     }
   }, [location.state])
 
+  // Temporizador para que el mensaje de error dure unos segundos
+  useEffect(() => {
+    if (errors.general) {
+      const timer = setTimeout(() => {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors.general
+          delete newErrors.type
+          delete newErrors.userState
+          return newErrors
+        })
+      }, 5000) // Durará 5 segundos antes de desaparecer
+      
+      return () => clearTimeout(timer)
+    }
+  }, [errors.general])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
