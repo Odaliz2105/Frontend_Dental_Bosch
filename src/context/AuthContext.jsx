@@ -128,12 +128,34 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
 
     } catch (error) {
+      const errorData = error.response?.data;
+      let errorMessage = "Error al iniciar sesión";
+
+      if (errorData) {
+        errorMessage =
+          errorData.mensaje ||
+          errorData.msg ||
+          errorData.error ||
+          "Error al iniciar sesión";
+      }
+
+      // Mejorar mensajes genéricos
+      const errorLower = errorMessage.toLowerCase();
+      if (errorLower.includes("credencial") || errorLower.includes("contraseña") || errorLower.includes("password") || errorLower.includes("incorrect")) {
+        errorMessage = "Correo o contraseña incorrectos";
+      } else if (errorLower.includes("pendient") || errorLower.includes("aproba")) {
+        errorMessage = "Tu cuenta está pendiente por aprobar por el administrador.";
+        return {
+          success: false,
+          requiresApproval: true,
+          error: errorMessage,
+          type: 'approval'
+        };
+      }
 
       return {
-
         success: false,
-        error: error.response?.data?.msg || "Error al iniciar sesión",
-
+        error: errorMessage,
       };
     }
   };
