@@ -43,8 +43,8 @@ Puedes acceder a la aplicación mediante la siguiente URL pública:
 | Repositorio | https://github.com/Odaliz2105/Frontend_Dental_Bosch |
 | Política de privacidad | https://frontend-dental-bosch.vercel.app/privacy |
 | Términos del servicio | https://frontend-dental-bosch.vercel.app/terms |
-| Video demostrativo | PENDIENTE |
-| Documento de tesis | PENDIENTE |
+| Video demostrativo | https://epnecuador-my.sharepoint.com/:f:/g/personal/odaliz_balseca_epn_edu_ec/IgCOnKUxve-TQrvt-t-Oe8e4AdTKkX_GD-TC2bNlYuww1zs?e=hyEuvh |
+| Documento de tesis | https://drive.google.com/file/d/1_uViQ7JipXcEG6grp8PstX-Z-3MhDNg8/view?usp=sharing |
 | APK Android | [Descargar desde Google Drive](https://drive.google.com/drive/folders/1EPWnVI_3bKyHwBH9dlgu-_4HFAoDS9dB?usp=sharing) |
 
 ## 4. Funcionalidades públicas
@@ -112,55 +112,68 @@ El frontend expone de forma pública la información del consultorio, los servic
 ## 7. Pantallas del sistema
 
 ### Página principal
-<!-- PENDIENTE: Agregar aquí la captura de la página principal -->
+<img width="1593" height="861" alt="image" src="https://github.com/user-attachments/assets/2ac17a26-1d4d-4117-ab2b-272f9e2a344b" />
+
 
 ### Servicios
-<!-- PENDIENTE: Agregar aquí la captura de servicios -->
+<img width="1602" height="862" alt="image" src="https://github.com/user-attachments/assets/0ba7323e-7655-4290-b227-e5c81a4c705c" />
+
 
 ### Inicio de sesión
-<!-- PENDIENTE: Agregar aquí la captura del inicio de sesión -->
+<img width="1621" height="859" alt="image" src="https://github.com/user-attachments/assets/b6efaa96-4c56-4a56-8274-9c49a4deae8b" />
+
 
 ### Registro de Doctor
-<!-- PENDIENTE: Agregar aquí la captura del registro de doctor -->
+<img width="1599" height="858" alt="image" src="https://github.com/user-attachments/assets/79034f22-129b-4fbc-b503-a801814244be" />
+
 
 ### Recuperación de contraseña
-<!-- PENDIENTE: Agregar aquí la captura de recuperación de contraseña -->
+<img width="645" height="706" alt="image" src="https://github.com/user-attachments/assets/dd531259-0fc0-40db-9a6d-e07f13f848ee" />
 
-### Panel del Administrador
-<!-- PENDIENTE: Agregar aquí la captura del panel del administrador -->
 
-### Solicitudes de doctores
-<!-- PENDIENTE: Agregar aquí la captura de solicitudes -->
+### Panel del Administrador y Solicitudes de doctores
+<img width="1597" height="861" alt="image" src="https://github.com/user-attachments/assets/b6d94c9b-948c-450d-98be-9808171a8ddc" />
+
 
 ### Doctores
-<!-- PENDIENTE: Agregar aquí la captura de doctores -->
+<img width="1600" height="855" alt="image" src="https://github.com/user-attachments/assets/c1f56614-d61d-4a3d-8d01-618111a8401d" />
+
 
 ### Pacientes
-<!-- PENDIENTE: Agregar aquí la captura de pacientes -->
+<img width="1598" height="864" alt="image" src="https://github.com/user-attachments/assets/586e0883-3f31-4121-a736-2626ba3ca78f" />
+
 
 ### Citas
-<!-- PENDIENTE: Agregar aquí la captura de citas -->
+<img width="1598" height="863" alt="image" src="https://github.com/user-attachments/assets/91272666-8403-4f60-af91-6d5aa3657867" />
+
 
 ### Panel del Doctor
-<!-- PENDIENTE: Agregar aquí la captura del panel del doctor -->
+<img width="1603" height="860" alt="image" src="https://github.com/user-attachments/assets/913cd4e2-7823-4ea4-9c38-65f9b3897010" />
+
 
 ### Historia clínica
-<!-- PENDIENTE: Agregar aquí la captura de la historia clínica -->
+<img width="1605" height="858" alt="image" src="https://github.com/user-attachments/assets/74b6e147-7bf5-4036-b2b1-196c940af491" />
+
 
 ### Consulta clínica
-<!-- PENDIENTE: Agregar aquí la captura de consulta clínica -->
+<img width="1600" height="858" alt="image" src="https://github.com/user-attachments/assets/1fb5aa9c-07fb-40e8-b6f3-026a647c8909" />
+
 
 ### Odontograma
-<!-- PENDIENTE: Agregar aquí la captura del odontograma -->
+<img width="654" height="420" alt="image" src="https://github.com/user-attachments/assets/de8729e5-e506-474a-8f38-4931dcf0828b" />
+
 
 ### Indicadores de salud bucal
-<!-- PENDIENTE: Agregar aquí la captura de indicadores -->
+<img width="654" height="216" alt="image" src="https://github.com/user-attachments/assets/5d1a9907-290b-497f-85ae-6b464745afc2" />
+
 
 ### Tratamientos
-<!-- PENDIENTE: Agregar aquí la captura de tratamientos -->
+<img width="481" height="347" alt="image" src="https://github.com/user-attachments/assets/67f9a569-c8e4-46f6-a9bb-4cd784cdbc8b" />
+
 
 ### Cita de seguimiento
-<!-- PENDIENTE: Agregar aquí la captura de cita de seguimiento -->
+<img width="1577" height="705" alt="image" src="https://github.com/user-attachments/assets/9c96ff91-5742-4121-ae50-97d1241b0a7c" />
+
 
 ## 8. Tecnologías utilizadas
 
@@ -391,21 +404,15 @@ Herramientas empleadas durante la etapa de pruebas:
 ## 20. Autora
 
 **Odaliz Balseca Valencia**  
-PENDIENTE (Correo)
+odaliz.balseca@epn.edu.ec
+balsecaodaliz@gmail.com
 
 Escuela Politécnica Nacional.  
 Escuela de Formación de Tecnólogos.  
 Carrera: Tecnología Superior en Desarrollo de Software.  
 Año: 2026.  
 
-Tutor o director: PENDIENTE
+Tutor o director: Ing. Ivonne Maldonado Soliz Msc.
 
 ---
 
-### Datos pendientes por completar manualmente
-- [ ] Capturas del sistema (comentarios en la sección 7).
-- [ ] Enlace del video demostrativo.
-- [ ] Enlace del documento de tesis.
-- [ ] Enlace definitivo del APK (verificado en LandingPage, pero se debe revisar si es el definitivo en Drive).
-- [ ] Tutor o director.
-- [ ] Correos académicos.
