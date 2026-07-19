@@ -405,6 +405,7 @@ Herramientas empleadas durante la etapa de pruebas:
 
 **Odaliz Balseca Valencia**  
 odaliz.balseca@epn.edu.ec
+
 balsecaodaliz@gmail.com
 
 Escuela Politécnica Nacional.  
