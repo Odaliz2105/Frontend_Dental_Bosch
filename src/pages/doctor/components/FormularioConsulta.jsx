@@ -389,9 +389,18 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
 
     if (citaId) payload.citaId = citaId
 
+    if (!consultaEdit) {
+      const histResult = await doctorService.getHistorialClinico(pacienteId)
+      const idsConsultasAntes = histResult.data?.datos?.consultas?.map(c => c._id) || []
+      console.log('Consultas antes:', idsConsultasAntes)
+    }
+
     const result = consultaEdit
       ? await doctorService.actualizarConsulta(pacienteId, consultaEdit._id, payload)
       : await doctorService.agregarConsulta(pacienteId, payload)
+      
+    console.log('Respuesta completa crear consulta:', result.data)
+
     if (result.success) {
       if (!consultaEdit) {
         const consultaId = result.data?.datos?.consultas?.[0]?._id
@@ -399,8 +408,12 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
           || result.data?.consulta?._id
           || result.data?.datos?._id
           || result.data?._id
+          
+        console.log('Consulta ID usada para inicializar:', consultaId)
+
         if (consultaId) {
           const initResult = await doctorService.inicializarOdontograma(pacienteId, consultaId, tipoDenticion)
+          console.log('Resultado inicialización:', initResult)
           if (!initResult.success) {
             console.error('Error al inicializar odontograma:', initResult.error)
           }

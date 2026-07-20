@@ -109,7 +109,12 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       consulta._id
     )
 
-    const odontogramaData = result.data?.odontograma || result.data?.datos?.odontograma
+    const odontogramaData =
+      result.data?.dientes
+        ? result.data
+        : result.data?.odontograma ||
+          result.data?.datos?.odontograma ||
+          null;
     if (result.success && odontogramaData) {
       setOdontograma(odontogramaData)
       setTipoDenticion(odontogramaData.tipoDenticion || 'mixta')
