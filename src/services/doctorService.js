@@ -10,6 +10,18 @@ const handleError = (error) => {
   return { success: false, error: msg, status: error.response?.status }
 }
 
+const extraerOdontograma = (responseData) => {
+  if (!responseData) return responseData;
+  if (responseData.odontograma) return responseData.odontograma;
+  if (responseData.datos?.odontograma) return responseData.datos.odontograma;
+  if (responseData.data?.odontograma) return responseData.data.odontograma;
+  if (responseData.data?.datos?.odontograma) return responseData.data.datos.odontograma;
+  if (responseData.dientes) return responseData;
+  if (responseData.datos?.dientes) return responseData.datos;
+  if (responseData.data?.dientes) return responseData.data;
+  return responseData;
+};
+
 // ── PACIENTES ──────────────────────────────────────────
 export const getDoctorPacientes = async () => {
   try {
@@ -198,7 +210,7 @@ export const verOdontograma = async (pacienteId, consultaId) => {
     const response = await api.get(
       `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma`
     )
-    return { success: true, data: response.data }
+    return { success: true, data: extraerOdontograma(response.data) }
   } catch (error) {
     return handleError(error)
   }
@@ -209,7 +221,7 @@ export const verOdontogramaVisual = async (pacienteId, consultaId) => {
     const response = await api.get(
       `/api/historial-clinico/${pacienteId}/consulta/${consultaId}/odontograma/visual`
     )
-    return { success: true, data: response.data }
+    return { success: true, data: extraerOdontograma(response.data) }
   } catch (error) {
     return handleError(error)
   }

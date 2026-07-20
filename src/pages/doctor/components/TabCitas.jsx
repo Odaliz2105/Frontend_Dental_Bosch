@@ -13,6 +13,12 @@ const getFechaBaseCitaHelper = (cita) => {
   return new Date(fechaValor || new Date())
 }
 
+const formatearFechaLarga = (cita) => {
+  const fecha = getFechaBaseCitaHelper(cita)
+  const str = fecha.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 const EstadoBadge = ({ estado }) => {
   const config = {
     pendiente: 'bg-yellow-100 text-yellow-800',
@@ -72,7 +78,7 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
 
         <div className="mb-4 p-3 bg-gray-50 rounded-xl text-sm text-gray-600">
           <p><span className="font-medium">Paciente:</span> {cita.paciente?.nombreCompleto}</p>
-          <p><span className="font-medium">Fecha:</span> {cita.fechaLarga}</p>
+          <p><span className="font-medium">Fecha:</span> {formatearFechaLarga(cita)}</p>
           <p><span className="font-medium">Hora:</span> {cita.horaFormateada}</p>
         </div>
 
@@ -368,7 +374,7 @@ const TabCitas = ({ onAtender }) => {
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                         <span className="flex items-center gap-1">
                           <Calendar size={11} />
-                          {cita.fechaLarga}
+                          {formatearFechaLarga(cita)}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock size={11} />

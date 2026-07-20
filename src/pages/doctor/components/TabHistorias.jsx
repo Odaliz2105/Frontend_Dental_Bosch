@@ -122,7 +122,7 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
         odontogramaExtraido = consulta.odontograma
       }
 
-      if (odontogramaExtraido && typeof odontogramaExtraido === 'object') {
+      if (odontogramaExtraido && typeof odontogramaExtraido === 'object' && (odontogramaExtraido.dientes || odontogramaExtraido.tipoDenticion)) {
         setOdontogramaDetalle(odontogramaExtraido)
         setErrorOdontogramaDetalle(null)
       } else {
