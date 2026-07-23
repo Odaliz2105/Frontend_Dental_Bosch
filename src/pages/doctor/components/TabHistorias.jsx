@@ -100,41 +100,74 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
   const [cargandoOdontogramaDetalle, setCargandoOdontogramaDetalle] = useState(false)
   const [errorOdontogramaDetalle, setErrorOdontogramaDetalle] = useState(null)
 
+  const extraerOdontogramaSeguro = data => {
+    if (!data) return null
+
+    if (data.dientes) return data
+    if (data.odontograma?.dientes) {
+      return data.odontograma
+    }
+    if (data.datos?.odontograma?.dientes) {
+      return data.datos.odontograma
+    }
+    if (data.data?.odontograma?.dientes) {
+      return data.data.odontograma
+    }
+    if (data.data?.datos?.odontograma?.dientes) {
+      return data.data.datos.odontograma
+    }
+
+    return null
+  }
+
   const cargarOdontogramaDetalle = async () => {
+    if (
+      !pacienteId ||
+      !consulta?._id ||
+      cargandoOdontogramaDetalle
+    ) {
+      return
+    }
+
     setCargandoOdontogramaDetalle(true)
-    let odontogramaExtraido = null
+    setErrorOdontogramaDetalle(null)
 
     try {
-      // Intento 1: Ruta visual
-      const result1 = await doctorService.verOdontogramaVisual(pacienteId, consulta._id)
-      if (result1.success) {
-        odontogramaExtraido = result1.data?.odontograma || result1.data?.datos?.odontograma || result1.data
-      } else {
-        // Intento 2: Ruta normal (si la visual falla, por ej. da 404)
-        const result2 = await doctorService.verOdontograma(pacienteId, consulta._id)
-        if (result2.success) {
-          odontogramaExtraido = result2.data?.odontograma || result2.data?.datos?.odontograma || result2.data
+      const visual =
+        await doctorService.verOdontogramaVisual(
+          pacienteId,
+          consulta._id
+        )
+
+      let odontogramaEncontrado =
+        visual.success
+          ? extraerOdontogramaSeguro(visual.data)
+          : null
+
+      if (!odontogramaEncontrado) {
+        const normal =
+          await doctorService.verOdontograma(
+            pacienteId,
+            consulta._id
+          )
+
+        if (normal.success) {
+          odontogramaEncontrado =
+            extraerOdontogramaSeguro(normal.data)
         }
       }
 
-      // Intento 3: Si vino poblado en la misma consulta
-      if (!odontogramaExtraido && consulta.odontograma) {
-        odontogramaExtraido = consulta.odontograma
-      }
-
-      if (odontogramaExtraido && typeof odontogramaExtraido === 'object' && (odontogramaExtraido.dientes || odontogramaExtraido.tipoDenticion)) {
-        setOdontogramaDetalle(odontogramaExtraido)
-        setErrorOdontogramaDetalle(null)
-      } else {
-        setOdontogramaDetalle(null)
-        setErrorOdontogramaDetalle(null) // No mostramos error si es que simplemente no tiene odontograma
-      }
+      setOdontogramaDetalle(
+        odontogramaEncontrado || null
+      )
     } catch (error) {
       setOdontogramaDetalle(null)
-      setErrorOdontogramaDetalle('Error al comunicarse con el servidor para el odontograma')
+      setErrorOdontogramaDetalle(
+        'No se pudo cargar el odontograma de esta consulta'
+      )
+    } finally {
+      setCargandoOdontogramaDetalle(false)
     }
-    
-    setCargandoOdontogramaDetalle(false)
   }
 
   useEffect(() => {
@@ -149,7 +182,17 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Header de la consulta */}
       <button
-        onClick={() => setExpandido(!expandido)}
+        type="button"
+        onClick={() => {
+          const textoSeleccionado =
+            window.getSelection()?.toString().trim()
+
+          if (textoSeleccionado) {
+            return
+          }
+
+          setExpandido(prev => !prev)
+        }}
         className="w-full flex items-start justify-between p-4 hover:bg-gray-50 transition-colors text-left"
       >
         <div className="flex items-start gap-3">
@@ -570,7 +613,7 @@ const DetalleConsulta = ({ consulta, pacienteId }) => {
                     Cargando odontograma...
                   </div>
                 ) : !odontogramaDetalle ? (
-                  <p className="text-xs text-gray-400">Esta consulta no tiene odontograma.</p>
+                  <p className="text-xs text-gray-400">Esta consulta no tiene un odontograma asociado.<br/>Revise otra consulta del historial.</p>
                   ) : (
                     <OdontogramaVisual
                       odontograma={odontogramaDetalle}
@@ -621,11 +664,21 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
     setMostrarFormulario(true)
   }
 
-  const handleConsultaCreada = async () => {
-    const result = await doctorService.getHistorialClinico(pacienteSeleccionado._id)
+  const handleConsultaCreada = async (info = {}) => {
+    const result =
+      await doctorService.getHistorialClinico(
+        pacienteSeleccionado._id
+      )
+
     if (result.success) {
       setHistorial(result.data.datos)
     }
+
+    mostrarToast(
+      info.mensaje ||
+        '✅ Consulta guardada correctamente',
+      'success'
+    )
   }
 
   const cargarHorarioDoctor = async () => {
@@ -719,7 +772,7 @@ const TabHistorias = ({ pacienteSeleccionadoId, pacienteNombre, citaId, motivoCi
 
   const mostrarToast = (msg, tipo = 'success') => {
     setToast({ msg, tipo })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 5000)
   }
 
   useEffect(() => {

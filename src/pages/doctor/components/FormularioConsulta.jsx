@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Trash2, Stethoscope, AlertCircle } from 'lucide-react'
 import Button from '../../../components/Button'
@@ -176,6 +176,7 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
   const [odontograma, setOdontograma] = useState(null)
   const [tipoDenticion, setTipoDenticion] = useState('permanente')
   const [cargandoOdontograma, setCargandoOdontograma] = useState(false)
+  const submitLockRef = useRef(false)
 
   const update = (path, value) => {
     setFormData(prev => {
@@ -374,13 +375,32 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
     setCargandoOdontograma(false)
   }
 
+  const obtenerCitaIdConsulta = consulta => {
+    const cita = consulta?.cita || consulta?.citaId
+
+    if (!cita) return ''
+
+    if (typeof cita === 'string') {
+      return String(cita)
+    }
+
+    return String(cita._id || cita.id || '')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    if (submitLockRef.current || enviando) {
+      return
+    }
+
+    submitLockRef.current = true
     setEnviando(true)
     setError(null)
 
     if (!formData.motivoConsulta.trim()) {
       setError('El motivo de consulta es obligatorio')
+      submitLockRef.current = false
       setEnviando(false)
       return
     }
@@ -389,44 +409,114 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
 
     if (citaId) payload.citaId = citaId
 
+    let consultasAntes = []
+    let idsConsultasAntes = new Set()
+
     if (!consultaEdit) {
       const histResult = await doctorService.getHistorialClinico(pacienteId)
-      const idsConsultasAntes = histResult.data?.datos?.consultas?.map(c => c._id) || []
-      console.log('Consultas antes:', idsConsultasAntes)
+      
+      consultasAntes = histResult.success
+        ? histResult.data?.datos?.consultas || []
+        : []
+
+      idsConsultasAntes = new Set(
+        consultasAntes
+          .map(consulta => String(consulta._id || ''))
+          .filter(Boolean)
+      )
+      
+      const consultaExistenteParaCita =
+        citaId
+          ? consultasAntes.find(
+              consulta =>
+                obtenerCitaIdConsulta(consulta) ===
+                String(citaId)
+            )
+          : null
+          
+      if (consultaExistenteParaCita) {
+        setError('Esta cita ya tiene una consulta clínica registrada.')
+        submitLockRef.current = false
+        setEnviando(false)
+        return
+      }
     }
 
-    const result = consultaEdit
-      ? await doctorService.actualizarConsulta(pacienteId, consultaEdit._id, payload)
-      : await doctorService.agregarConsulta(pacienteId, payload)
-      
-    console.log('Respuesta completa crear consulta:', result.data)
+    let consultaConfirmada = false
 
-    if (result.success) {
-      if (!consultaEdit) {
-        const consultaId = result.data?.datos?.consultas?.[0]?._id
-          || result.data?.datos?.consulta?._id
-          || result.data?.consulta?._id
-          || result.data?.datos?._id
-          || result.data?._id
+    try {
+      const result = consultaEdit
+        ? await doctorService.actualizarConsulta(pacienteId, consultaEdit._id, payload)
+        : await doctorService.agregarConsulta(pacienteId, payload)
+        
+      console.log('Respuesta completa crear consulta:', result.data)
+
+      if (result.success) {
+        await onSuccess({
+          mensaje: '✅ Consulta guardada correctamente'
+        })
+        onClose()
+        consultaConfirmada = true
+        return
+      } else {
+        console.error(
+          'El backend respondió error al crear la consulta:',
+          result.error
+        )
+
+        const historialDespuesResult =
+          await doctorService.getHistorialClinico(pacienteId)
+
+        const consultasDespues =
+          historialDespuesResult.success
+            ? historialDespuesResult.data?.datos?.consultas || []
+            : []
+            
+        const consultaNuevaPorId =
+          consultasDespues.find(consulta => {
+            const id = String(consulta._id || '')
+            return id && !idsConsultasAntes.has(id)
+          })
           
-        console.log('Consulta ID usada para inicializar:', consultaId)
-
-        if (consultaId) {
-          const initResult = await doctorService.inicializarOdontograma(pacienteId, consultaId, tipoDenticion)
-          console.log('Resultado inicialización:', initResult)
-          if (!initResult.success) {
-            console.error('Error al inicializar odontograma:', initResult.error)
-          }
+        const consultaNuevaPorCita =
+          citaId
+            ? consultasDespues.find(
+                consulta =>
+                  obtenerCitaIdConsulta(consulta) ===
+                  String(citaId)
+              )
+            : null
+            
+        const consultaGuardada =
+          consultaNuevaPorCita ||
+          consultaNuevaPorId
+          
+        if (consultaGuardada) {
+          console.warn(
+            'La consulta fue insertada aunque el backend respondió error:',
+            consultaGuardada._id
+          )
+          await onSuccess({
+            mensaje: '✅ Consulta guardada correctamente.'
+          })
+          onClose()
+          consultaConfirmada = true
+          return
         } else {
-          console.error('No se pudo obtener el ID de la consulta creada')
+          setError(
+            'No se pudo completar el guardado. Revise la información e intente nuevamente.'
+          )
         }
       }
-      onSuccess()
-      onClose()
-    } else {
-      setError(result.error || 'Error al guardar consulta')
+    } catch (error) {
+      setError('Ocurrió un error inesperado al guardar la consulta')
+      console.error(error)
+    } finally {
+      setEnviando(false)
+      if (!consultaConfirmada) {
+        submitLockRef.current = false
+      }
     }
-    setEnviando(false)
   }
 
   const secciones = [
@@ -446,13 +536,19 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-6 pb-6 overflow-y-auto"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+        onMouseDown={e => {
+          if (e.target === e.currentTarget && !enviando) {
+            onClose()
+          }
+        }}
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden"
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -462,7 +558,7 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
                 Paciente: <span className="font-medium text-gray-700">{pacienteNombre}</span>
               </p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onClick={onClose} disabled={enviando} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <X size={20} className="text-gray-400" />
             </button>
           </div>
@@ -1037,12 +1133,12 @@ const FormularioConsulta = ({ pacienteId, pacienteNombre, onClose, onSuccess, co
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <Button type="button" variant="ghost" onClick={onClose} disabled={enviando}>
                 Cancelar
               </Button>
               <Button type="submit" loading={enviando} disabled={enviando}>
                 <Stethoscope size={16} className="mr-2" />
-                {consultaEdit ? 'Actualizar Consulta' : 'Guardar Consulta'}
+                {enviando ? 'Guardando consulta...' : (consultaEdit ? 'Actualizar Consulta' : 'Guardar Consulta')}
               </Button>
             </div>
           </form>

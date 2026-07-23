@@ -5,6 +5,49 @@ import Button from '../../../components/Button'
 import doctorService from '../../../services/doctorService'
 import OdontogramaVisual from '../../../components/OdontogramaVisual'
 
+const obtenerIdReferencia = referencia => {
+  if (!referencia) return undefined
+  if (typeof referencia === 'string') return referencia
+  return referencia._id || referencia.id
+}
+
+const eliminarValoresUndefined = objeto =>
+  Object.fromEntries(
+    Object.entries(objeto).filter(
+      ([, valor]) => valor !== undefined
+    )
+  )
+
+const construirConsultaCompleta = (
+  consulta,
+  cambios = {}
+) => {
+  if (!consulta) return cambios
+
+  const {
+    _id,
+    __v,
+    createdAt,
+    updatedAt,
+    ...datosConsulta
+  } = consulta
+
+  const doctorId = obtenerIdReferencia(consulta.doctor)
+  const citaIdConsulta = obtenerIdReferencia(consulta.cita || consulta.citaId)
+
+  const payload = eliminarValoresUndefined({
+    ...datosConsulta,
+    doctor: doctorId,
+    cita: citaIdConsulta,
+    motivoConsulta: String(consulta.motivoConsulta || consulta.cita?.motivo || '').trim(),
+    fecha: consulta.fecha,
+    ...cambios
+  })
+
+  delete payload.citaId
+  return payload
+}
+
 const INITIAL_INDICADORES_SALUD_BUCAL = {
   higieneOral: { placa: 'leve', calculo: 'leve', gingivitis: 'leve' },
   enfermedadPeriodontal: 'leve',
@@ -71,12 +114,56 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
   const [cambiosPendientes, setCambiosPendientes] = useState(false)
 
   const cargarHistorial = async () => {
-    setCargandoHistorial(true)
-    const result = await doctorService.getHistorialClinico(pacienteSeleccionadoId)
-    if (result.success) {
-      setHistorial(result.data.datos)
+    if (!pacienteSeleccionadoId) {
+      return
     }
-    setCargandoHistorial(false)
+    setCargandoHistorial(true)
+    try {
+      const result = await doctorService.getHistorialClinico(pacienteSeleccionadoId)
+      if (!result.success) {
+        return
+      }
+      const historialData = result.data?.datos || result.data
+      setHistorial(historialData)
+
+      const consultas = historialData?.consultas || []
+      const consultasRecientes = [...consultas].reverse()
+      let consultaEncontrada = null
+
+      if (citaId) {
+        consultaEncontrada = consultasRecientes.find(consulta => {
+          const consultaCitaId = obtenerIdReferencia(consulta.cita || consulta.citaId)
+          return String(consultaCitaId || '') === String(citaId)
+        })
+      }
+
+      if (!consultaEncontrada) {
+        const ahora = new Date()
+        consultaEncontrada = consultasRecientes.find(consulta => {
+          if (!consulta.fecha) {
+            return false
+          }
+          const fechaConsulta = new Date(consulta.fecha)
+          return (
+            fechaConsulta.getFullYear() === ahora.getFullYear() &&
+            fechaConsulta.getMonth() === ahora.getMonth() &&
+            fechaConsulta.getDate() === ahora.getDate()
+          )
+        })
+      }
+
+      if (consultaEncontrada) {
+        setConsultaSeleccionada(consultaEncontrada)
+        await cargarOdontogramaExistente(consultaEncontrada)
+      } else {
+        setConsultaSeleccionada(null)
+        setOdontograma(null)
+      }
+    } catch (error) {
+      console.error('Error al cargar historial:', error)
+    } finally {
+      setCargandoHistorial(false)
+    }
   }
 
   useEffect(() => {
@@ -87,7 +174,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       setConsultaSeleccionada(null)
       setOdontograma(null)
     }
-  }, [pacienteSeleccionadoId])
+  }, [pacienteSeleccionadoId, citaId])
 
   useEffect(() => {
     if (consultaSeleccionada) {
@@ -269,10 +356,16 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     }
 
     setGuardandoIndicadores(true)
+    
+    const payloadActualizacion = construirConsultaCompleta(
+      consultaSeleccionada,
+      { indicadoresSaludBucal }
+    )
+
     const result = await doctorService.actualizarConsulta(
       pacienteSeleccionadoId,
       consultaSeleccionada._id,
-      { indicadoresSaludBucal }
+      payloadActualizacion
     )
 
     if (result.success) {
@@ -463,7 +556,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
                   </p>
                   <p className="text-xs text-gray-500">
                     {consultaSeleccionada
-                      ? consultaSeleccionada.motivoConsulta
+                      ? (consultaSeleccionada.motivoConsulta || consultaSeleccionada.cita?.motivo || 'Sin motivo registrado')
                       : 'Elige una consulta para inicializar el odontograma'
                     }
                   </p>
@@ -510,7 +603,7 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
                             })}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            {consulta.motivoConsulta || 'Sin motivo'}
+                            {consulta.motivoConsulta || consulta.cita?.motivo || 'Sin motivo registrado'}
                           </p>
                         </button>
                       ))

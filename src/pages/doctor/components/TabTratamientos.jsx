@@ -4,6 +4,49 @@ import { Heart, Search, User, X, AlertCircle, Eye, Calendar, ClipboardList, Load
 import Button from '../../../components/Button'
 import doctorService from '../../../services/doctorService'
 
+const obtenerIdReferencia = referencia => {
+  if (!referencia) return undefined
+  if (typeof referencia === 'string') return referencia
+  return referencia._id || referencia.id
+}
+
+const eliminarValoresUndefined = objeto =>
+  Object.fromEntries(
+    Object.entries(objeto).filter(
+      ([, valor]) => valor !== undefined
+    )
+  )
+
+const construirConsultaCompleta = (
+  consulta,
+  cambios = {}
+) => {
+  if (!consulta) return cambios
+
+  const {
+    _id,
+    __v,
+    createdAt,
+    updatedAt,
+    ...datosConsulta
+  } = consulta
+
+  const doctorId = obtenerIdReferencia(consulta.doctor)
+  const citaIdConsulta = obtenerIdReferencia(consulta.cita || consulta.citaId)
+
+  const payload = eliminarValoresUndefined({
+    ...datosConsulta,
+    doctor: doctorId,
+    cita: citaIdConsulta,
+    motivoConsulta: String(consulta.motivoConsulta || consulta.cita?.motivo || '').trim(),
+    fecha: consulta.fecha,
+    ...cambios
+  })
+
+  delete payload.citaId
+  return payload
+}
+
 const INITIAL_NUEVO_TRATAMIENTO = {
   codigo: '',
   fecha: new Date().toISOString().slice(0, 16),
@@ -37,22 +80,22 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, citaId, onLim
     if (result.success) {
       const consultas = result.data?.datos?.consultas || result.data?.consultas || []
       // Detectar consulta de la cita actual
+      const consultasRecientes = [...consultas].reverse()
       let encontrada = null
+      
       if (citaId) {
-        encontrada = consultas.find(c => {
-          const ref = c.cita || c.citaId
-          if (!ref) return false
-          const id = typeof ref === 'string' ? ref : ref._id || ref.id || ''
-          return id === citaId
+        encontrada = consultasRecientes.find(consulta => {
+          const id = obtenerIdReferencia(consulta.cita || consulta.citaId)
+          return String(id || '') === String(citaId)
         })
       }
 
       // Si no encuentra por ID exacto de la cita, buscar la consulta de HOY (fallback)
       if (!encontrada) {
         const hoy = new Date()
-        encontrada = consultas.find(c => {
-          if (!c.fecha) return false
-          const fechaConsulta = new Date(c.fecha)
+        encontrada = consultasRecientes.find(consulta => {
+          if (!consulta.fecha) return false
+          const fechaConsulta = new Date(consulta.fecha)
           return fechaConsulta.getFullYear() === hoy.getFullYear() &&
                  fechaConsulta.getMonth() === hoy.getMonth() &&
                  fechaConsulta.getDate() === hoy.getDate()
@@ -124,10 +167,16 @@ const TabTratamientos = ({ pacienteSeleccionadoId, pacienteNombre, citaId, onLim
     }
 
     const tratamientosActualizados = [...(consultaActual.tratamientos || []), tratamiento]
+    
+    const payloadActualizacion = construirConsultaCompleta(
+      consultaActual,
+      { tratamientos: tratamientosActualizados }
+    )
+
     const result = await doctorService.actualizarConsulta(
       pacienteSeleccionadoId,
       consultaActual._id,
-      { tratamientos: tratamientosActualizados }
+      payloadActualizacion
     )
 
     if (result.success) {
