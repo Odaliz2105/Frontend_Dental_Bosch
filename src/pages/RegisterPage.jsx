@@ -8,32 +8,93 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Logo from '../components/Logo'
 
+const especialidadesDisponibles = [
+  "Ortodoncia",
+  "Odontopediatría",
+  "Endodoncia",
+  "Periodoncia",
+  "Cirugía Oral",
+  "Prótesis Dental",
+  "Odontología General",
+  "Cosmética Dental"
+];
+
+const validarCedulaEcuatoriana = (cedula) => {
+  if (!/^\d{10}$/.test(cedula)) return false;
+
+  const provincia = parseInt(cedula.substring(0, 2), 10);
+  if (provincia < 1 || (provincia > 24 && provincia !== 30)) {
+    return false;
+  }
+
+  const tercerDigito = parseInt(cedula.substring(2, 3), 10);
+  if (tercerDigito >= 6) {
+    return false;
+  }
+
+  const coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  const verificador = parseInt(cedula.substring(9, 10), 10);
+
+  let suma = 0;
+  for (let i = 0; i < 9; i++) {
+    let valor = parseInt(cedula.substring(i, i + 1), 10) * coeficientes[i];
+    if (valor >= 10) {
+      valor -= 9;
+    }
+    suma += valor;
+  }
+
+  const decenaSuperior = Math.ceil(suma / 10) * 10;
+  let digitoCalculado = decenaSuperior - suma;
+  if (digitoCalculado === 10) {
+    digitoCalculado = 0;
+  }
+
+  return digitoCalculado === verificador;
+};
+
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
     nombre: '',
-    apellido: '', // Campo requerido por el backend
+    apellido: '',
     email: '',
     password: '',
     confirmPassword: '',
     telefono: '',
     rol: 'doctor',
-    cedula: '', // Campo para doctores
-    especialidad: '' // Campo para doctores
+    cedula: '',
+    especialidad: '',
+    terminosAceptados: false
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { register } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    const { name, value, type, checked } = e.target
+    
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    if (name === 'telefono' || name === 'cedula') {
+      newValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+    
+    setFormData(prev => {
+      const updated = { ...prev, [name]: newValue };
+      
+      // Update confirmPassword validation error dynamic if it's already set or typed
+      if (name === 'password' && updated.confirmPassword) {
+         if (errors.confirmPassword && updated.password === updated.confirmPassword) {
+            setErrors(errs => ({...errs, confirmPassword: ''}))
+         }
+      }
+      return updated;
+    })
     
     // Limpiar error cuando el usuario empieza a escribir
     if (errors[name]) {
@@ -42,104 +103,201 @@ const RegisterPage = () => {
         [name]: ''
       }))
     }
+    if (errors.general) {
+      setErrors(prev => ({
+        ...prev,
+        general: ''
+      }))
+    }
   }
 
   const validateForm = () => {
     const newErrors = {}
     
-    // Validar nombre - solo letras
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es requerido'
-    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.nombre.trim())) {
-      newErrors.nombre = 'El nombre solo debe contener letras'
-    } else if (formData.nombre.trim().length < 3) {
-      newErrors.nombre = 'El nombre debe tener al menos 3 caracteres'
+    // Nombre
+    const nombreLimpio = formData.nombre.trim().replace(/\s+/g, ' ');
+    if (!nombreLimpio) {
+      newErrors.nombre = 'El nombre es obligatorio';
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(nombreLimpio)) {
+      newErrors.nombre = 'El nombre solo puede contener letras y espacios';
+    } else if (nombreLimpio.length < 3) {
+      newErrors.nombre = 'El nombre debe tener al menos 3 caracteres';
+    } else if (nombreLimpio.length > 50) {
+      newErrors.nombre = 'El nombre no puede exceder los 50 caracteres';
     }
     
-    // Validar apellido - solo letras
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es requerido'
-    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.apellido.trim())) {
-      newErrors.apellido = 'El apellido solo debe contener letras'
-    } else if (formData.apellido.trim().length < 3) {
-      newErrors.apellido = 'El apellido debe tener al menos 3 caracteres'
+    // Apellido
+    const apellidoLimpio = formData.apellido.trim().replace(/\s+/g, ' ');
+    if (!apellidoLimpio) {
+      newErrors.apellido = 'El apellido es obligatorio';
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]+$/.test(apellidoLimpio)) {
+      newErrors.apellido = 'El apellido solo puede contener letras y espacios';
+    } else if (apellidoLimpio.length < 3) {
+      newErrors.apellido = 'El apellido debe tener al menos 3 caracteres';
+    } else if (apellidoLimpio.length > 50) {
+      newErrors.apellido = 'El apellido no puede exceder los 50 caracteres';
     }
     
-    // Validar email
-    if (!formData.email) {
-      newErrors.email = 'El correo electrónico es requerido'
-    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
-      newErrors.email = 'El correo electrónico no es válido'
+    // Email
+    const emailLimpio = formData.email.trim();
+    if (!emailLimpio) {
+      newErrors.email = 'El correo electrónico es obligatorio';
+    } else if (emailLimpio.includes(' ')) {
+      newErrors.email = 'El correo electrónico no tiene un formato válido';
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailLimpio)) {
+      newErrors.email = 'El correo electrónico no tiene un formato válido';
     }
     
-    // Validar contraseña
-    if (!formData.password) {
-      newErrors.password = 'La contraseña es requerida'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'La contraseña debe tener al menos 6 caracteres'
-    }
-    
-    // Validar confirmación de contraseña
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirma tu contraseña'
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden'
-    }
-    
-    // Validar teléfono - exactamente 10 dígitos
+    // Teléfono
     if (!formData.telefono) {
-      newErrors.telefono = 'El teléfono es requerido'
-    } else if (!/^\d{10}$/.test(formData.telefono.replace(/\D/g, ''))) {
-      newErrors.telefono = 'El teléfono debe tener exactamente 10 dígitos'
+      newErrors.telefono = 'El teléfono es obligatorio';
+    } else if (!/^\d{10}$/.test(formData.telefono)) {
+      newErrors.telefono = 'El teléfono debe contener exactamente 10 números';
     }
     
-    // Validar cédula - exactamente 10 dígitos
-    if (!formData.cedula.trim()) {
-      newErrors.cedula = 'La cédula es requerida'
-    } else if (!/^\d{10}$/.test(formData.cedula.replace(/\D/g, ''))) {
-      newErrors.cedula = 'La cédula debe tener 10 dígitos'
-    }
-    if (!formData.especialidad.trim()) {
-      newErrors.especialidad = 'La especialidad es requerida'
+    // Cédula
+    if (!formData.cedula) {
+      newErrors.cedula = 'La cédula es obligatoria';
+    } else if (!/^\d{10}$/.test(formData.cedula)) {
+      newErrors.cedula = 'La cédula debe contener exactamente 10 números';
+    } else if (!validarCedulaEcuatoriana(formData.cedula)) {
+      newErrors.cedula = 'La cédula ingresada no corresponde a una cédula ecuatoriana válida';
     }
     
-    return newErrors
+    // Especialidad
+    if (!formData.especialidad) {
+      newErrors.especialidad = 'Seleccione una especialidad válida';
+    } else if (!especialidadesDisponibles.includes(formData.especialidad)) {
+      newErrors.especialidad = 'Seleccione una especialidad válida';
+    }
+    
+    // Contraseña
+    if (!formData.password) {
+      newErrors.password = 'La contraseña es obligatoria';
+    } else if (!/^(?=.*[A-Z])(?=.*\d).{6,}$/.test(formData.password)) {
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres, una mayúscula y un número';
+    }
+    
+    // Confirmar Contraseña
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    }
+    
+    // Términos
+    if (!formData.terminosAceptados) {
+      newErrors.terminosAceptados = 'Debe aceptar los términos y la política de privacidad para continuar';
+    }
+    
+    return newErrors;
+  }
+
+  const mapearErrorBackend = (mensaje) => {
+    const errorMap = {};
+    const textoNormalizado = mensaje.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    
+    if (textoNormalizado.includes('cedula')) {
+       if (textoNormalizado.includes('registrada')) {
+           errorMap.cedula = 'Ya existe una cuenta registrada con esta cédula';
+       } else {
+           errorMap.cedula = 'La cédula ingresada no corresponde a una cédula ecuatoriana válida';
+       }
+    } else if (textoNormalizado.includes('telefono')) {
+      errorMap.telefono = 'El teléfono debe contener exactamente 10 números';
+    } else if (textoNormalizado.includes('email') || textoNormalizado.includes('correo')) {
+       if (textoNormalizado.includes('registrado') || textoNormalizado.includes('existe')) {
+           errorMap.email = 'Ya existe una cuenta registrada con este correo electrónico';
+       } else {
+           errorMap.email = 'El correo electrónico no tiene un formato válido';
+       }
+    } else if (textoNormalizado.includes('nombre')) {
+      errorMap.nombre = 'Error en el nombre';
+    } else if (textoNormalizado.includes('apellido')) {
+      errorMap.apellido = 'Error en el apellido';
+    } else if (textoNormalizado.includes('contrasena') || textoNormalizado.includes('password')) {
+      errorMap.password = 'Error en la contraseña';
+    } else if (textoNormalizado.includes('especialidad')) {
+      errorMap.especialidad = 'Error en la especialidad';
+    } else {
+      errorMap.general = mensaje;
+    }
+    return errorMap;
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    if (isSubmitting) return;
+
     const validationErrors = validateForm()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+      // Enfocar y hacer scroll al primer error
+      const primerError = Object.keys(validationErrors)[0];
+      const elemento = document.querySelector(`[name="${primerError}"]`);
+      if (elemento) {
+         elemento.focus();
+         elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return
     }
     
-    const { confirmPassword, ...registerData } = formData
+    setIsSubmitting(true);
     
-    console.log('📤 Enviando datos de registro:', registerData)
-    
-    const result = await register(registerData)
-    
-    if (result.success) {
-      console.log('✅ Registro exitoso:', result.data)
-      
-      // Mensaje específico según el rol
-      const successMessage = result.mensaje || 
-        (formData.rol === 'doctor' 
-          ? 'Registro exitoso. Tu cuenta será revisada por un administrador. Revisa tu email para confirmar tu cuenta.'
-          : 'Registro exitoso. Por favor, inicia sesión.'
-        )
-      
-      navigate('/login', { 
-        state: { 
-          message: successMessage,
-          type: 'success'
-        } 
-      })
-    } else {
-      console.error('❌ Error en registro:', result.error)
-      setErrors({ general: result.error })
+    try {
+        const nombreLimpio = formData.nombre.trim().replace(/\s+/g, ' ');
+        const apellidoLimpio = formData.apellido.trim().replace(/\s+/g, ' ');
+        const emailLimpio = formData.email.trim().toLowerCase();
+
+        const registerData = {
+          nombre: nombreLimpio,
+          apellido: apellidoLimpio,
+          email: emailLimpio,
+          password: formData.password,
+          telefono: formData.telefono,
+          cedula: formData.cedula,
+          especialidad: formData.especialidad,
+          rol: 'doctor'
+        };
+        
+        console.log('📤 Enviando datos de registro:', registerData)
+        
+        const result = await register(registerData)
+        
+        if (result.success) {
+          console.log('✅ Registro exitoso:', result.data)
+          
+          const successMessage = result.data?.mensaje || 'Solicitud de registro enviada correctamente. La cuenta está pendiente de aprobación por el administrador.';
+          
+          navigate('/login', { 
+            state: { 
+              message: successMessage,
+              type: 'success'
+            } 
+          })
+        } else {
+          console.error('❌ Error en registro:', result.error)
+          const mapErrores = mapearErrorBackend(result.error);
+          setErrors(mapErrores);
+          const primerError = Object.keys(mapErrores)[0];
+          if (primerError !== 'general') {
+              const elemento = document.querySelector(`[name="${primerError}"]`);
+              if (elemento) {
+                 elemento.focus();
+                 elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+          } else {
+              const formContenedor = document.querySelector('.bg-white.rounded-2xl');
+              if (formContenedor) {
+                 formContenedor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+          }
+        }
+    } catch(err) {
+        setErrors({ general: 'Ocurrió un error inesperado. Intente nuevamente.' })
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
@@ -224,6 +382,9 @@ const RegisterPage = () => {
                 placeholder="1234567890"
                 error={errors.telefono}
                 icon={Phone}
+                inputMode="numeric"
+                maxLength={10}
+                autoComplete="tel"
                 required
               />
 
@@ -236,6 +397,9 @@ const RegisterPage = () => {
                 placeholder="0117054321"
                 error={errors.cedula}
                 icon={FileText}
+                inputMode="numeric"
+                maxLength={10}
+                autoComplete="off"
                 required
               />
 
@@ -251,14 +415,9 @@ const RegisterPage = () => {
                   required
                 >
                   <option value="">Selecciona una especialidad</option>
-                  <option value="Ortodoncia">Ortodoncia</option>
-                  <option value="Odontopediatría">Odontopediatría</option>
-                  <option value="Endodoncia">Endodoncia</option>
-                  <option value="Periodoncia">Periodoncia</option>
-                  <option value="Cirugía Oral">Cirugía Oral</option>
-                  <option value="Prótesis Dental">Prótesis Dental</option>
-                  <option value="Odontología General">Odontología General</option>
-                  <option value="Cosmética Dental">Cosmética Dental</option>
+                  {especialidadesDisponibles.map((esp) => (
+                    <option key={esp} value={esp}>{esp}</option>
+                  ))}
                 </select>
                 {errors.especialidad && (
                   <p className="mt-1 text-sm text-red-600">{errors.especialidad}</p>
@@ -307,24 +466,30 @@ const RegisterPage = () => {
                 </button>
               </div>
 
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                  required
-                />
-                <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-                  Acepto los{' '}
-                  <Link to="/terms" target="_blank" className="text-primary hover:text-primary/80 underline">
-                    términos y condiciones
-                  </Link>{' '}
-                  y la{' '}
-                  <Link to="/privacy" target="_blank" className="text-primary hover:text-primary/80 underline">
-                    política de privacidad
-                  </Link>
-                </label>
+              <div className="flex flex-col">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    name="terminosAceptados"
+                    checked={formData.terminosAceptados}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
+                    Acepto los{' '}
+                    <Link to="/terms" target="_blank" className="text-primary hover:text-primary/80 underline">
+                      términos y condiciones
+                    </Link>{' '}
+                    y la{' '}
+                    <Link to="/privacy" target="_blank" className="text-primary hover:text-primary/80 underline">
+                      política de privacidad
+                    </Link>
+                  </label>
+                </div>
+                {errors.terminosAceptados && (
+                    <p className="mt-1 text-sm text-red-600">{errors.terminosAceptados}</p>
+                )}
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -334,7 +499,7 @@ const RegisterPage = () => {
                 </div>
                 <p className="text-xs text-blue-700">
                   Tu cuenta será revisada por un administrador antes de ser aprobada. 
-                  Recibirás un correo electrónico cuando tu cuenta sea activada.
+                  Te notificaremos cuando tu cuenta sea activada.
                 </p>
               </div>
 
@@ -342,8 +507,10 @@ const RegisterPage = () => {
                 type="submit"
                 className="w-full"
                 size="large"
+                loading={isSubmitting}
+                disabled={isSubmitting}
               >
-                Crear cuenta
+                {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
               </Button>
             </form>
 

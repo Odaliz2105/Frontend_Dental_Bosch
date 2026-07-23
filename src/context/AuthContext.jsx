@@ -180,15 +180,22 @@ export const AuthProvider = ({ children }) => {
       console.log("❌ Data del error:", error.response?.data);
 
       let errorMessage = "Error al registrarse";
+      let errorData = null;
+      let errorStatus = null;
 
       if (error.response) {
         // El servidor respondió con un estado de error
+        errorStatus = error.response.status;
+        errorData = error.response.data;
 
-        errorMessage =
-          error.response.data?.mensaje ||
-          error.response.data?.msg ||
-          error.response.data?.error ||
-          `Error del servidor (${error.response.status})`;
+        let rawMessage = errorData?.mensaje || errorData?.message || errorData?.msg || errorData?.error;
+        if (Array.isArray(rawMessage)) {
+          errorMessage = rawMessage.join(', ');
+        } else if (typeof rawMessage === 'string') {
+          errorMessage = rawMessage;
+        } else {
+          errorMessage = `Error del servidor (${errorStatus})`;
+        }
 
       } else if (error.request) {
 
@@ -207,6 +214,8 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         error: errorMessage,
+        status: errorStatus,
+        errorData: errorData
       };
     }
   };
