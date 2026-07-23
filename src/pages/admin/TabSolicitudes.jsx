@@ -7,13 +7,18 @@ import ModalDetalle from '../../components/admin/ModalDetalle'
 import Button from '../../components/Button'
 
 const TabSolicitudes = () => {
-  const { getPendingDoctors, aprobarDoctorAdmin, rechazarDoctorAdmin, getAllDoctors } = useAuth()
+  const { getPendingDoctors, aprobarDoctorAdmin, rechazarDoctorAdmin } = useAuth()
   const [solicitudes, setSolicitudes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [loadingBtn, setLoadingBtn] = useState({})
   const [toast, setToast] = useState(null)
   const [detalle, setDetalle] = useState(null)
+  
+  // Estados para el modal de rechazo
+  const [doctorARechazar, setDoctorARechazar] = useState(null)
+  const [motivoRechazo, setMotivoRechazo] = useState('')
+  const [rechazando, setRechazando] = useState(false)
 
   const mostrarToast = (msg, tipo = 'success') => {
     setToast({ msg, tipo })
@@ -21,69 +26,76 @@ const TabSolicitudes = () => {
   }
 
   const cargar = async () => {
-    console.log('🔄 TabSolicitudes.cargar() iniciado')
     setCargando(true)
-    const result = await getPendingDoctors()
-    console.log('📥 getPendingDoctors response:', result)
-    if (result.success) {
-      const solicitudesData = result.data.datos?.doctores || []
-      console.log('📋 Solicitudes pendientes cargadas:', solicitudesData.length, solicitudesData)
-      setSolicitudes(solicitudesData)
-    } else {
-      console.error('❌ Error cargando solicitudes:', result.error)
-      mostrarToast('Error al cargar solicitudes', 'error')
+    try {
+      const result = await getPendingDoctors()
+      if (result.success) {
+        const solicitudesData = result.data.datos?.doctores || []
+        setSolicitudes(solicitudesData)
+      } else {
+        mostrarToast('Error al cargar solicitudes', 'error')
+      }
+    } finally {
+      setCargando(false)
     }
-    setCargando(false)
   }
 
   useEffect(() => { cargar() }, [])
 
-  const handleAccion = async (doctor, accion) => {
-    const doctorId = doctor._id
-    const usuarioId = doctor.usuario?._id
-    console.log('🔄 handleAccion iniciado:', { doctorId, usuarioId, accion, doctor })
-    console.log('🎯 Usando usuario._id para la acción:', usuarioId)
-    setLoadingBtn(prev => ({ ...prev, [doctor._id]: true }))
-    
-    let result
-    if (accion === 'aprobado') {
-      console.log('📤 Enviando solicitud de aprobación para usuario:', usuarioId)
-      result = await aprobarDoctorAdmin(usuarioId)
-    } else {
-      console.log('📤 Enviando solicitud de rechazo para usuario:', usuarioId)
-      result = await rechazarDoctorAdmin(usuarioId)
+  const handleAprobar = async (doctor) => {
+    const usuarioId = doctor.usuario?._id;
+    if (!usuarioId) {
+      mostrarToast('No se encontró el identificador del usuario asociado al doctor', 'error');
+      return;
     }
-    
-    console.log('📥 Respuesta del backend:', result)
-    
-    if (result.success) {
-      console.log('✅ Acción exitosa, recargando listas...')
-      mostrarToast(
-        accion === 'aprobado' 
-          ? '✅ Doctor aprobado y notificado por email' 
-          : '⛔ Doctor rechazado y notificado por email',
-        accion === 'aprobado' ? 'success' : 'error'
-      )
-      
-      // Recargar ambas listas: solicitudes pendientes y doctores aprobados
-      console.log('🔄 Recargando lista de solicitudes pendientes...')
-      await cargar()
-      console.log('✅ Lista de solicitudes recargada')
-      
-      // Notificar a la pestaña de doctores que recargue los datos
-      console.log('📢 Enviando evento doctorStatusChanged:', { action: accion, doctorId })
-      window.dispatchEvent(new CustomEvent('doctorStatusChanged', { 
-        detail: { action: accion, doctorId } 
-      }))
-    } else {
-      console.error('❌ Error en la acción:', result.error)
-      mostrarToast(result.error || 'Error al procesar', 'error')
+
+    setLoadingBtn(prev => ({ ...prev, [doctor._id]: true }));
+    try {
+      const result = await aprobarDoctorAdmin(usuarioId);
+      if (result.success) {
+        mostrarToast('Doctor aprobado correctamente. El sistema intentó enviar la notificación por correo electrónico', 'success');
+        await cargar();
+        window.dispatchEvent(new CustomEvent('doctorStatusChanged', { 
+          detail: { action: 'aprobado', doctorId: doctor._id } 
+        }));
+      } else {
+        mostrarToast(result.error || 'Error al aprobar doctor', 'error');
+      }
+    } finally {
+      setLoadingBtn(prev => ({ ...prev, [doctor._id]: false }));
     }
-    setLoadingBtn(prev => ({ ...prev, [doctor._id]: false }))
-  }
+  };
+
+  const confirmarRechazo = async () => {
+    if (!doctorARechazar) return;
+
+    const usuarioId = doctorARechazar.usuario?._id;
+    if (!usuarioId) {
+      mostrarToast('No se encontró el identificador del usuario asociado al doctor', 'error');
+      return;
+    }
+
+    setRechazando(true);
+    try {
+      const result = await rechazarDoctorAdmin(usuarioId, motivoRechazo);
+      if (result.success) {
+        mostrarToast('Solicitud rechazada correctamente. El sistema intentó enviar la notificación por correo electrónico', 'success');
+        await cargar();
+        window.dispatchEvent(new CustomEvent('doctorStatusChanged', { 
+          detail: { action: 'rechazado', doctorId: doctorARechazar._id } 
+        }));
+        // Cerrar modal
+        setDoctorARechazar(null);
+        setMotivoRechazo('');
+      } else {
+        mostrarToast(result.error || 'Error al rechazar doctor', 'error');
+      }
+    } finally {
+      setRechazando(false);
+    }
+  };
 
   const pendientes = solicitudes.filter(s => 
-    // getPendingDoctors devuelve solo pendientes, no necesita filtro de estado
     `${s.nombreCompleto || `${s.usuario?.nombre} ${s.usuario?.apellido}`.trim()} ${s.usuario?.email}` 
       .toLowerCase()
       .includes(busqueda.toLowerCase())
@@ -93,6 +105,61 @@ const TabSolicitudes = () => {
     <div>
       <Toast toast={toast} />
       <ModalDetalle doctor={detalle} onClose={() => setDetalle(null)} />
+
+      {/* Modal de Rechazo */}
+      {doctorARechazar && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+          >
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Rechazar solicitud</h3>
+              <div className="mb-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <p><span className="font-semibold text-gray-700">Doctor:</span> {doctorARechazar.nombreCompleto || `${doctorARechazar.usuario?.nombre} ${doctorARechazar.usuario?.apellido}`.trim()}</p>
+                <p><span className="font-semibold text-gray-700">Correo:</span> {doctorARechazar.usuario?.email}</p>
+                <p><span className="font-semibold text-gray-700">Especialidad:</span> {doctorARechazar.especialidad}</p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Motivo del rechazo (Opcional)
+                </label>
+                <textarea
+                  value={motivoRechazo}
+                  onChange={(e) => setMotivoRechazo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none h-24 text-sm"
+                  placeholder="Ej: Documentación incompleta..."
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  El motivo será incluido en el correo enviado al doctor
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDoctorARechazar(null);
+                    setMotivoRechazo('');
+                  }}
+                  disabled={rechazando}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={confirmarRechazo}
+                  loading={rechazando}
+                >
+                  Confirmar rechazo
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <div className="relative mb-6">
         <Search size={18} className="absolute left-3 top-3 text-gray-400" />
@@ -153,7 +220,7 @@ const TabSolicitudes = () => {
                     <Eye size={16} />
                   </button>
                   <Button
-                    onClick={() => handleAccion(doctor, 'aprobado')}
+                    onClick={() => handleAprobar(doctor)}
                     loading={loadingBtn[doctor._id]}
                     className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5"
                     size="small"
@@ -161,8 +228,11 @@ const TabSolicitudes = () => {
                     <CheckCircle size={14} className="mr-1" /> Aprobar
                   </Button>
                   <Button
-                    onClick={() => handleAccion(doctor, 'rechazado')}
-                    loading={loadingBtn[doctor._id]}
+                    onClick={() => {
+                       setDoctorARechazar(doctor);
+                       setMotivoRechazo('');
+                    }}
+                    disabled={loadingBtn[doctor._id]}
                     variant="outline"
                     className="border-red-300 text-red-600 hover:bg-red-50 text-xs px-3 py-1.5"
                     size="small"

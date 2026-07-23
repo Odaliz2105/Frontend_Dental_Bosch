@@ -140,17 +140,29 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Mejorar mensajes genéricos
-      const errorLower = errorMessage.toLowerCase();
-      if (errorLower.includes("credencial") || errorLower.includes("contraseña") || errorLower.includes("password") || errorLower.includes("incorrect")) {
-        errorMessage = "Correo o contraseña incorrectos";
-      } else if (errorLower.includes("pendient") || errorLower.includes("aproba")) {
-        errorMessage = "Tu cuenta está pendiente por aprobar por el administrador.";
+      const textoNormalizado = errorMessage.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      
+      if (textoNormalizado.includes('rechaz')) {
+        return {
+          success: false,
+          rejected: true,
+          requiresApproval: false,
+          userState: 'rechazado',
+          error: errorMessage
+        };
+      }
+      
+      if (textoNormalizado.includes('pendient') || textoNormalizado.includes('aprobacion')) {
         return {
           success: false,
           requiresApproval: true,
-          error: errorMessage,
-          type: 'approval'
+          userState: 'pendiente',
+          error: errorMessage
         };
+      }
+      
+      if (textoNormalizado.includes('credencial') || textoNormalizado.includes('incorrect')) {
+        errorMessage = "Correo o contraseña incorrectos";
       }
 
       return {
@@ -699,103 +711,34 @@ export const AuthProvider = ({ children }) => {
 
 
 
-  const aprobarDoctorAdmin = async (doctorId, fallbackId = null) => {
-
+  const aprobarDoctorAdmin = async (usuarioId) => {
     try {
-
-      let response
-
-      
-
-      console.log('📤 aprobarDoctorAdmin - Enviando al backend:', { doctorId, activo: true })
-
-      
-
-      // Usar siempre el ID del usuario como principal
-
-      const usuarioId = fallbackId || doctorId
-
-      console.log('🎯 Usando usuario._id para aprobación:', usuarioId)
-
-      
-
-      response = await api.put(`/api/admin/doctores/${usuarioId}/estado`, {
-
-        activo: true
-
-      })
-
-      
-
-      console.log('📥 aprobarDoctorAdmin - Respuesta completa del backend:', response)
-
-      console.log('📥 aprobarDoctorAdmin - response.data:', response.data)
-
-      console.log('📥 aprobarDoctorAdmin - response.data.datos:', response.data?.datos)
+      const response = await api.put(`/api/admin/doctores/${usuarioId}/aprobar`)
 
       return { success: true, data: response.data }
 
     } catch (error) {
-
-      console.error('❌ aprobarDoctorAdmin - Error:', error.response?.data)
-
       return {
-
         success: false,
-
-        error: error.response?.data?.mensaje || 'Error al aprobar doctor'
-
+        error: error.response?.data?.mensaje || error.response?.data?.message || 'Error al aprobar doctor'
       }
-
     }
-
   }
 
-
-
-  const rechazarDoctorAdmin = async (doctorId, fallbackId = null) => {
-
+  const rechazarDoctorAdmin = async (usuarioId, motivo = '') => {
     try {
-
-      let response
-
-      console.log('📤 rechazarDoctorAdmin - Enviando al backend:', { doctorId, activo: false })
-
-      
-
-      // Usar siempre el ID del usuario como principal
-
-      const usuarioId = fallbackId || doctorId
-
-      console.log('🎯 Usando usuario._id para rechazo:', usuarioId)
-
-
-      response = await api.put(`/api/admin/doctores/${usuarioId}/estado`, {
-
-        activo: false
-
+      const response = await api.put(`/api/admin/doctores/${usuarioId}/rechazar`, {
+        motivo: motivo.trim()
       })
-
-      
-
-      console.log('📥 rechazarDoctorAdmin - Respuesta del backend:', response.data)
 
       return { success: true, data: response.data }
 
     } catch (error) {
-
-      console.error('❌ rechazarDoctorAdmin - Error:', error.response?.data)
-
       return {
-
         success: false,
-
-        error: error.response?.data?.mensaje || 'Error al rechazar doctor'
-
+        error: error.response?.data?.mensaje || error.response?.data?.message || 'Error al rechazar doctor'
       }
-
     }
-
   }
 
   const verificarCitasDoctor = async (doctorId) => {
