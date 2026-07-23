@@ -48,6 +48,31 @@ const construirConsultaCompleta = (
   return payload
 }
 
+const prepararOdontogramaParaBackend =
+  odontograma => {
+    if (!odontograma) return odontograma
+
+    return {
+      ...odontograma,
+      dientes:
+        (odontograma.dientes || []).map(
+          diente => {
+            const {
+              visual,
+              superficiesClasico,
+              ...datosDiente
+            } = diente
+
+            return {
+              ...datosDiente,
+              superficies:
+                diente.superficies || {}
+            }
+          }
+        )
+    }
+  }
+
 const INITIAL_INDICADORES_SALUD_BUCAL = {
   higieneOral: { placa: 'leve', calculo: 'leve', gingivitis: 'leve' },
   enfermedadPeriodontal: 'leve',
@@ -271,23 +296,96 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     if (result.success) {
       setOdontograma(prev => {
         if (!prev) return prev
-        const nuevosDientes = prev.dientes.map(d => {
-          if (d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)) {
+
+        const nuevosDientes =
+          prev.dientes.map(d => {
+            const esMismoDiente =
+              d.codigoFDI ===
+                diente.codigoFDI ||
+              (
+                d._id &&
+                diente._id &&
+                d._id === diente._id
+              )
+
+            if (!esMismoDiente) {
+              return d
+            }
+
+            const superficiesBackend =
+              payloadBackend?.superficies
+                ? {
+                    ...(d.superficies || {}),
+                    ...payloadBackend.superficies
+                  }
+                : d.superficies
+
             return {
               ...d,
-              superficiesClasico: superficiesActualizadas,
-              estadoGeneral: nuevoEstado || d.estadoGeneral
+              superficies:
+                superficiesBackend,
+              superficiesClasico:
+                superficiesActualizadas,
+              estadoGeneral:
+                payloadBackend?.estadoGeneral ||
+                d.estadoGeneral
             }
+          })
+
+        const nuevoOdontograma = {
+          ...prev,
+          dientes: nuevosDientes,
+          fechaActualizacion:
+            new Date().toISOString()
+        }
+
+        const cpo =
+          calcularCPO(nuevoOdontograma)
+
+        setIndicadoresSaludBucal(
+          indicadores => ({
+            ...indicadores,
+            indiceCPO: cpo
+          })
+        )
+
+        setConsultaSeleccionada(
+          consultaActual =>
+            consultaActual
+              ? {
+                  ...consultaActual,
+                  odontograma:
+                    nuevoOdontograma
+                }
+              : consultaActual
+        )
+
+        setHistorial(historialActual => {
+          if (
+            !historialActual?.consultas ||
+            !consultaSeleccionada?._id
+          ) {
+            return historialActual
           }
-          return d
+
+          return {
+            ...historialActual,
+            consultas:
+              historialActual.consultas.map(
+                consulta =>
+                  consulta._id ===
+                  consultaSeleccionada._id
+                    ? {
+                        ...consulta,
+                        odontograma:
+                          nuevoOdontograma
+                      }
+                    : consulta
+              )
+          }
         })
-        const nuevoOdonto = { ...prev, dientes: nuevosDientes }
-        const cpo = calcularCPO(nuevoOdonto)
-        setIndicadoresSaludBucal(ind => ({
-          ...ind,
-          indiceCPO: cpo
-        }))
-        return nuevoOdonto
+
+        return nuevoOdontograma
       })
     } else {
       mostrarToast(result.error || 'Error al actualizar superficie', 'error')
@@ -312,21 +410,75 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
       setOdontograma(prev => {
         if (!prev) return prev
         const nuevosDientes = prev.dientes.map(d => {
-          if (d.codigoFDI === diente.codigoFDI || (d._id && d._id === diente._id)) {
-            return {
-              ...d,
-              [field]: value
-            }
+          const esMismoDiente =
+            d.codigoFDI ===
+              diente.codigoFDI ||
+            (
+              d._id &&
+              diente._id &&
+              d._id === diente._id
+            )
+
+          if (!esMismoDiente) {
+            return d
           }
-          return d
+
+          return {
+            ...d,
+            [field]: value
+          }
         })
-        const nuevoOdonto = { ...prev, dientes: nuevosDientes }
-        const cpo = calcularCPO(nuevoOdonto)
+        
+        const nuevoOdontograma = {
+          ...prev,
+          dientes: nuevosDientes,
+          fechaActualizacion:
+            new Date().toISOString()
+        }
+        
+        const cpo = calcularCPO(nuevoOdontograma)
         setIndicadoresSaludBucal(ind => ({
           ...ind,
           indiceCPO: cpo
         }))
-        return nuevoOdonto
+
+        setConsultaSeleccionada(
+          consultaActual =>
+            consultaActual
+              ? {
+                  ...consultaActual,
+                  odontograma:
+                    nuevoOdontograma
+                }
+              : consultaActual
+        )
+
+        setHistorial(historialActual => {
+          if (
+            !historialActual?.consultas ||
+            !consultaSeleccionada?._id
+          ) {
+            return historialActual
+          }
+
+          return {
+            ...historialActual,
+            consultas:
+              historialActual.consultas.map(
+                consulta =>
+                  consulta._id ===
+                  consultaSeleccionada._id
+                    ? {
+                        ...consulta,
+                        odontograma:
+                          nuevoOdontograma
+                      }
+                    : consulta
+              )
+          }
+        })
+
+        return nuevoOdontograma
       })
     } else {
       mostrarToast(result.error || 'Error al actualizar diente', 'error')
@@ -357,10 +509,20 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
 
     setGuardandoIndicadores(true)
     
-    const payloadActualizacion = construirConsultaCompleta(
-      consultaSeleccionada,
-      { indicadoresSaludBucal }
-    )
+    const odontogramaActual =
+      prepararOdontogramaParaBackend(
+        odontograma
+      )
+
+    const payloadActualizacion =
+      construirConsultaCompleta(
+        consultaSeleccionada,
+        {
+          odontograma:
+            odontogramaActual,
+          indicadoresSaludBucal
+        }
+      )
 
     const result = await doctorService.actualizarConsulta(
       pacienteSeleccionadoId,
@@ -369,16 +531,69 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     )
 
     if (result.success) {
-      const consultaActualizada = { ...consultaSeleccionada, indicadoresSaludBucal }
-      setConsultaSeleccionada(consultaActualizada)
+      const consultaActualizada = {
+        ...consultaSeleccionada,
+        odontograma:
+          odontogramaActual,
+        indicadoresSaludBucal
+      }
+
+      setConsultaSeleccionada(
+        consultaActualizada
+      )
+
+      setOdontograma(
+        odontogramaActual
+      )
+
       setHistorial(prev => ({
         ...prev,
-        consultas: prev.consultas.map(consulta =>
-          consulta._id === consultaSeleccionada._id ? consultaActualizada : consulta
-        )
+        consultas:
+          prev.consultas.map(
+            consulta =>
+              consulta._id ===
+              consultaSeleccionada._id
+                ? consultaActualizada
+                : consulta
+          )
       }))
+
       setCambiosPendientes(false)
-      mostrarToast('✅ Odontograma e indicadores guardados correctamente')
+
+      mostrarToast(
+        '✅ Odontograma e indicadores guardados correctamente'
+      )
+
+      const verificacion =
+        await doctorService
+          .verOdontogramaVisual(
+            pacienteSeleccionadoId,
+            consultaSeleccionada._id
+          )
+
+      const odontogramaVerificado =
+        verificacion.data?.dientes
+          ? verificacion.data
+          : verificacion.data?.odontograma ||
+            verificacion.data?.datos
+              ?.odontograma ||
+            null
+
+      if (odontogramaVerificado && odontogramaVerificado.dientes) {
+        setOdontograma(
+          odontogramaVerificado
+        )
+
+        setConsultaSeleccionada(
+          actual => ({
+            ...actual,
+            odontograma:
+              odontogramaVerificado
+          })
+        )
+      } else {
+        mostrarToast('El servidor no devolvió el odontograma después de guardar.', 'error')
+      }
     } else {
       mostrarToast(result.error || 'Error al guardar. La cita puede haber finalizado.', 'error')
     }
