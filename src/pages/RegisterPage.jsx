@@ -174,6 +174,8 @@ const RegisterPage = () => {
     // Contraseña
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
+    } else if (formData.password !== formData.password.trim()) {
+      newErrors.password = 'La contraseña no debe comenzar ni terminar con espacios';
     } else if (!/^(?=.*[A-Z])(?=.*\d).{6,}$/.test(formData.password)) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres, una mayúscula y un número';
     }

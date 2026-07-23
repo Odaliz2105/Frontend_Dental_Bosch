@@ -85,7 +85,12 @@ export const AuthProvider = ({ children }) => {
 
     try {
 
-      const response = await api.post("/api/auth/login", credentials);
+      const credentialsNormalizadas = {
+        email: credentials.email?.trim().toLowerCase(),
+        password: credentials.password
+      }
+
+      const response = await api.post("/api/auth/login", credentialsNormalizadas);
       const { token, usuario } = response.data;
 
       // Verificación adicional para doctores pendientes

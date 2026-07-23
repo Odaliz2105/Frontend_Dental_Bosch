@@ -17,6 +17,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({})
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -38,20 +39,18 @@ const LoginPage = () => {
 
   // Temporizador para que el mensaje de error dure unos segundos
   useEffect(() => {
-    if (errors.general) {
-      const timer = setTimeout(() => {
-        setErrors(prev => {
-          const newErrors = { ...prev }
-          delete newErrors.general
-          delete newErrors.type
-          delete newErrors.userState
-          return newErrors
-        })
-      }, 5000) // Durará 5 segundos antes de desaparecer
-      
-      return () => clearTimeout(timer)
+    if (!errors.general) return
+    
+    if (errors.type === 'approval' || errors.type === 'rejected') {
+      return
     }
-  }, [errors.general])
+
+    const timer = setTimeout(() => {
+      setErrors({})
+    }, 10000) // Durará 10 segundos antes de desaparecer
+    
+    return () => clearTimeout(timer)
+  }, [errors.general, errors.type])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -61,12 +60,14 @@ const LoginPage = () => {
     }))
     
     // Limpiar error cuando el usuario empieza a escribir
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
-    }
+    setErrors(prev => {
+      const updatedErrors = { ...prev }
+      delete updatedErrors[name]
+      delete updatedErrors.general
+      delete updatedErrors.type
+      delete updatedErrors.userState
+      return updatedErrors
+    })
   }
 
   const validateForm = () => {
@@ -90,31 +91,49 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
+    if (isSubmitting) return
+    
     const validationErrors = validateForm()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
     
-    const result = await login(formData)
+    setIsSubmitting(true)
     
-    if (result.success) {
-      navigate('/dashboard')
-    } else {
-      // Manejar diferentes tipos de error
-      let errorType = 'general'
-      
-      if (result.requiresApproval) {
-        errorType = 'approval'
-      } else if (result.rejected) {
-        errorType = 'rejected'
+    try {
+      const credentialsLimpias = {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password
       }
       
-      setErrors({ 
-        general: result.error, 
-        type: errorType,
-        userState: result.userState 
-      })
+      setFormData(prev => ({
+        ...prev,
+        email: credentialsLimpias.email
+      }))
+
+      const result = await login(credentialsLimpias)
+      
+      if (result.success) {
+        navigate('/dashboard')
+      } else {
+        // Manejar diferentes tipos de error
+        let errorType = 'general'
+        
+        if (result.requiresApproval) {
+          errorType = 'approval'
+        } else if (result.rejected) {
+          errorType = 'rejected'
+        }
+        
+        setErrors({ 
+          general: result.error, 
+          type: errorType,
+          userState: result.userState 
+        })
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -190,6 +209,7 @@ const LoginPage = () => {
                 placeholder="tu@email.com"
                 error={errors.email}
                 icon={Mail}
+                autoComplete="email"
                 required
               />
 
@@ -203,6 +223,7 @@ const LoginPage = () => {
                   placeholder="••••••••"
                   error={errors.password}
                   icon={Lock}
+                  autoComplete="current-password"
                   required
                 />
                 <button
@@ -237,8 +258,10 @@ const LoginPage = () => {
                 type="submit"
                 className="w-full"
                 size="large"
+                loading={isSubmitting}
+                disabled={isSubmitting}
               >
-                Iniciar sesión
+                {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
               </Button>
             </form>
 
