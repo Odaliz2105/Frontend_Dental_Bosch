@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   User,
   Mail,
   Phone,
@@ -28,12 +28,12 @@ import {
 } from '../utils/profileValidation'
 
 const ProfilePage = () => {
-  const { user, updateUser, refreshUserData } = useAuth()
+  const { user, refreshUserData } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  
+
   const [formData, setFormData] = useState({
     nombre: user?.nombre || '',
     apellido: user?.apellido || '',
@@ -62,7 +62,7 @@ const ProfilePage = () => {
       ...prev,
       [name]: value
     }))
-    
+
     // Limpiar error cuando el usuario empieza a escribir
     if (errors[name]) {
       setErrors(prev => ({
@@ -70,7 +70,7 @@ const ProfilePage = () => {
         [name]: ''
       }))
     }
-    
+
     // Limpiar mensajes
     setSuccess('')
     setError('')
@@ -82,36 +82,36 @@ const ProfilePage = () => {
       apellido: validarNombrePersonal(formData.apellido, 'apellido'),
       telefono: validarTelefonoEcuador(formData.telefono)
     }
-    
+
     // Validación específica para doctor
     if (user?.rol === 'doctor') {
       newErrors.especialidad = validarEspecialidad(formData.especialidad)
     }
-    
+
     setErrors(newErrors)
     return !tieneErrores(newErrors)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
-    
+
     setLoading(true)
     setError('')
     setSuccess('')
-    
+
     try {
       let result
-      
+
       const payloadBase = {
         nombre: normalizarTextoPerfil(formData.nombre),
         apellido: normalizarTextoPerfil(formData.apellido),
         telefono: normalizarTextoPerfil(formData.telefono)
       }
-      
+
       // Para doctores, usar la función de sincronización especial
       if (user?.rol === 'doctor') {
         const doctorData = {
@@ -125,15 +125,15 @@ const ProfilePage = () => {
       } else {
         const response = await api.put('/api/auth/perfil', payloadBase)
         result = { success: response.data.success }
-        
-        if (response.data.usuario) {
-          updateUser(response.data.usuario)
+
+        if (response.data.success) {
+          await refreshUserData()
         }
       }
-      
+
       if (result.success) {
         setSuccess('Perfil actualizado exitosamente')
-        
+
         // Limpiar mensajes después de 3 segundos
         setTimeout(() => {
           setSuccess('')
@@ -152,12 +152,12 @@ const ProfilePage = () => {
   const renderField = (name, label, type = 'text', required = false, options = []) => {
     const value = formData[name] || ''
     const hasError = errors[name]
-    
+
     // Solo mostrar campos permitidos por rol
     if (user?.rol === 'doctor') {
       if (!['nombre', 'apellido', 'telefono', 'especialidad'].includes(name)) return null
     }
-    
+
     // El email es de solo lectura
     if (name === 'email') {
       return (
@@ -180,7 +180,7 @@ const ProfilePage = () => {
         </motion.div>
       )
     }
-    
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -191,7 +191,7 @@ const ProfilePage = () => {
         <label className="block text-sm font-medium text-gray-700">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
-        
+
         {type === 'select' ? (
           <select
             name={name}
@@ -219,7 +219,7 @@ const ProfilePage = () => {
             }`}
           />
         )}
-        
+
         <AnimatePresence>
           {hasError && (
             <motion.p
@@ -240,7 +240,7 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      
+
       <div className="flex-1 lg:ml-64">
         <div className="p-3 lg:p-6">
           <motion.div
@@ -254,17 +254,17 @@ const ProfilePage = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
                   <p className="text-gray-600 mt-1">
-                    {user?.rol === 'doctor' ? 'Información del doctor' : 
+                    {user?.rol === 'doctor' ? 'Información del doctor' :
                      'Información del administrador'}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Rol</p>
                     <p className="font-medium capitalize">{user?.rol}</p>
                   </div>
-                  
+
                   <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-white text-xl font-bold">
                     {user?.nombre?.charAt(0)?.toUpperCase()}
                   </div>
@@ -283,7 +283,7 @@ const ProfilePage = () => {
                     <p className="text-green-700">{success}</p>
                   </motion.div>
                 )}
-                
+
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}

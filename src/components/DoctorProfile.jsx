@@ -49,16 +49,16 @@ const DoctorProfile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     setError('')
     setSuccess('')
-    
+
     const nuevosErrores = {
       nombre: validarNombrePersonal(formData.nombre, 'nombre'),
       apellido: validarNombrePersonal(formData.apellido, 'apellido'),
       especialidad: validarEspecialidad(formData.especialidad)
     }
-    
+
     if (tieneErrores(nuevosErrores)) {
       setProfileErrors(nuevosErrores)
       return

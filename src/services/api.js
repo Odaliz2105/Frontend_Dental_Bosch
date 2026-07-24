@@ -26,7 +26,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+    const mensaje = error.response?.data?.mensaje || ''
+
+    const esPasswordActualIncorrecta =
+      status === 401 &&
+      url.includes('/api/auth/actualizar-password') &&
+      mensaje === 'Contraseña actual incorrecta'
+
+    if (status === 401 && !esPasswordActualIncorrecta) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }

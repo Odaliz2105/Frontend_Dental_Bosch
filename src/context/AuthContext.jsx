@@ -203,7 +203,7 @@ export const AuthProvider = ({ children }) => {
 
       // Mejorar mensajes genéricos
       const textoNormalizado = errorMessage.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-      
+
       if (textoNormalizado.includes('rechaz')) {
         return {
           success: false,
@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }) => {
           error: errorMessage
         };
       }
-      
+
       if (textoNormalizado.includes('pendient') || textoNormalizado.includes('aprobacion')) {
         return {
           success: false,
@@ -222,7 +222,7 @@ export const AuthProvider = ({ children }) => {
           error: errorMessage
         };
       }
-      
+
       if (textoNormalizado.includes('credencial') || textoNormalizado.includes('incorrect')) {
         errorMessage = "Correo o contraseña incorrectos";
       }
@@ -363,7 +363,7 @@ export const AuthProvider = ({ children }) => {
 
       const response = await api.get("/api/auth/verificar-token");
       const usuario = response.data.usuario;
-      
+
       // Verificación adicional para doctores pendientes
 
       if (usuario.rol === "doctor" && usuario.estado !== "aprobado") {
@@ -404,7 +404,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, data: response.data }
     } catch (error) {
       const erroresBackend = error.response?.data?.errores
-      
+
       const mensaje = Array.isArray(erroresBackend) && erroresBackend.length > 0
         ? erroresBackend.join('. ')
         : (error.response?.data?.mensaje || error.response?.data?.msg || "Error al actualizar contraseña")
@@ -740,7 +740,7 @@ export const AuthProvider = ({ children }) => {
 
   }
 
-  
+
 
   // Configurar Axios para incluir token si existe
 
@@ -813,28 +813,28 @@ export const AuthProvider = ({ children }) => {
   const verificarCitasDoctor = async (doctorId) => {
     try {
       console.log('📤 verificarCitasDoctor - Verificando citas del doctor:', doctorId)
-      
+
       // Usar directamente el endpoint general de citas y filtrar
       console.log('🔄 Usando endpoint general de citas para verificar')
       const citasResponse = await api.get('/api/admin/citas')
-      
+
       console.log('📥 Todas las citas:', citasResponse.data)
-      
+
       // Filtrar citas del doctor y que estén pendientes
       const citasDoctor = citasResponse.data.data?.filter(cita => {
         const doctorIdCita = cita.doctor?._id || cita.doctor
         const esMismoDoctor = doctorIdCita === doctorId
         const estaPendiente = ['pendiente', 'confirmada', 'programada'].includes(cita.estado)
-        
+
         console.log(`📋 Cita ${cita._id}: doctor=${doctorIdCita}, mismoDoctor=${esMismoDoctor}, estado=${cita.estado}, pendiente=${estaPendiente}`)
-        
+
         return esMismoDoctor && estaPendiente
       }) || []
-      
+
       console.log(`🎯 Citas pendientes del doctor ${doctorId}:`, citasDoctor.length, citasDoctor)
-      
+
       return {
-        success: true, 
+        success: true,
         data: {
           tieneCitasPendientes: citasDoctor.length > 0,
           totalCitasPendientes: citasDoctor.length,
@@ -853,14 +853,14 @@ export const AuthProvider = ({ children }) => {
   const softDeleteDoctor = async (doctorId) => {
     try {
       console.log('📤 softDeleteDoctor - Desactivando doctor:', doctorId)
-      
+
       // Primero verificar si tiene citas pendientes
       const citasCheck = await verificarCitasDoctor(doctorId)
-      
+
       if (!citasCheck.success) {
         return citasCheck
       }
-      
+
       // Si tiene citas pendientes, retornar error con información
       if (citasCheck.data?.tieneCitasPendientes) {
         console.log('🚫 Doctor tiene citas pendientes, no se puede desactivar')
@@ -871,13 +871,13 @@ export const AuthProvider = ({ children }) => {
           error: `No se puede desactivar al doctor. Tiene ${citasCheck.data.totalCitasPendientes} cita(s) pendiente(s). Debe reasignar las citas a otro doctor primero.`
         }
       }
-      
+
       console.log('✅ Doctor no tiene citas pendientes, procediendo con desactivación')
-      
+
       // Usar el endpoint DELETE correcto según especificación del backend
       console.log('🔄 Usando endpoint DELETE /api/doctores/:id')
       const token = localStorage.getItem('token')
-      
+
       const response = await fetch(`https://backend-dental-bosch-vr8o.onrender.com/api/doctores/${doctorId}`, {
         method: 'DELETE',
         headers: {
@@ -885,23 +885,23 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json'
         }
       })
-      
+
       const data = await response.json()
       console.log('� Respuesta DELETE:', data)
-      
+
       if (!response.ok) {
         throw new Error(data.mensaje || 'Error al desactivar doctor')
       }
-      
+
       // Emitir evento para que otros componentes se actualicen
       window.dispatchEvent(new CustomEvent('doctorStatusChanged', {
         detail: { doctorId, action: 'deactivated' }
       }))
-      
+
       return { success: true, data }
     } catch (error) {
       console.error('❌ softDeleteDoctor - Error:', error)
-      
+
       return {
         success: false,
         error: error.message || 'Error al desactivar doctor'
@@ -912,7 +912,7 @@ export const AuthProvider = ({ children }) => {
   const reactivarDoctor = async (doctorId) => {
     try {
       console.log('📤 reactivarDoctor - Reactivando doctor:', doctorId)
-      
+
       // TODO: Esperando endpoint de reactivación del backend
       // Por ahora, mostrar mensaje informativo
       return {
