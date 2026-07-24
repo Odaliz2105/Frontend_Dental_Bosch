@@ -91,7 +91,14 @@ const calcularCPO = (odontograma) => {
   odontograma.dientes.forEach(d => {
     const estado = String(d.estadoGeneral || '').toUpperCase()
     
-    const superficies = Object.values(d.superficiesClasico || d.superficies || {})
+    const superficies = [
+      ...Object.values(
+        d.superficies || {}
+      ),
+      ...Object.values(
+        d.superficiesClasico || {}
+      )
+    ]
     const tieneCaries = superficies.some(s => s?.estado === 'CARIES' || s?.color === 'ROJO')
     const tieneObturacion = superficies.some(s => s?.estado === 'OBTURADO' || s?.color === 'AZUL')
     
@@ -514,13 +521,24 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
         odontograma
       )
 
+    const cpoActual =
+      calcularCPO(
+        odontogramaActual
+      )
+
+    const indicadoresActualizados = {
+      ...indicadoresSaludBucal,
+      indiceCPO: cpoActual
+    }
+
     const payloadActualizacion =
       construirConsultaCompleta(
         consultaSeleccionada,
         {
           odontograma:
             odontogramaActual,
-          indicadoresSaludBucal
+          indicadoresSaludBucal:
+            indicadoresActualizados
         }
       )
 
@@ -531,11 +549,16 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
     )
 
     if (result.success) {
+      setIndicadoresSaludBucal(
+        indicadoresActualizados
+      )
+
       const consultaActualizada = {
         ...consultaSeleccionada,
         odontograma:
           odontogramaActual,
-        indicadoresSaludBucal
+        indicadoresSaludBucal:
+          indicadoresActualizados
       }
 
       setConsultaSeleccionada(
@@ -580,6 +603,19 @@ const TabOdontograma = ({ pacienteSeleccionadoId, pacienteNombre, citaId, fechaC
             null
 
       if (odontogramaVerificado && odontogramaVerificado.dientes) {
+        const cpoVerificado =
+          calcularCPO(
+            odontogramaVerificado
+          )
+
+        setIndicadoresSaludBucal(
+          prev => ({
+            ...prev,
+            indiceCPO:
+              cpoVerificado
+          })
+        )
+
         setOdontograma(
           odontogramaVerificado
         )

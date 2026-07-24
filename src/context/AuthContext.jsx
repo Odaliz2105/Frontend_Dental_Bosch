@@ -20,6 +20,61 @@ export const useAuth = () => {
 
 /* eslint-enable */
 
+const enriquecerUsuarioDoctor = async (usuarioBase) => {
+  if (!usuarioBase || usuarioBase.rol !== 'doctor') {
+    return usuarioBase
+  }
+
+  try {
+    const response = await api.get(
+      '/api/doctores/perfil/doctor'
+    )
+
+    const doctor =
+      response.data?.data ||
+      response.data ||
+      {}
+
+    const usuarioDoctor =
+      doctor.usuario || {}
+
+    return {
+      ...usuarioBase,
+      nombre:
+        usuarioDoctor.nombre ??
+        usuarioBase.nombre,
+      apellido:
+        usuarioDoctor.apellido ??
+        usuarioBase.apellido,
+      email:
+        usuarioDoctor.email ??
+        usuarioBase.email,
+      telefono:
+        usuarioDoctor.telefono ??
+        usuarioBase.telefono,
+      cedula:
+        usuarioDoctor.cedula ??
+        usuarioBase.cedula,
+      especialidad:
+        doctor.especialidad ??
+        usuarioBase.especialidad ??
+        '',
+      horarioAtencion:
+        doctor.horarioAtencion ??
+        usuarioBase.horarioAtencion ??
+        []
+    }
+  } catch (error) {
+    console.error(
+      'No se pudo cargar el perfil profesional:',
+      error
+    )
+
+    return usuarioBase
+  }
+}
+
+
 export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
@@ -37,7 +92,7 @@ export const AuthProvider = ({ children }) => {
 
         .get("/api/auth/verificar-token")
 
-        .then((response) => {
+        .then(async (response) => {
 
           const usuario = response.data.usuario;
 
@@ -57,7 +112,8 @@ export const AuthProvider = ({ children }) => {
 
           }
 
-          setUser(usuario);
+          const usuarioCompleto = await enriquecerUsuarioDoctor(usuario);
+          setUser(usuarioCompleto);
 
         })
 
@@ -124,12 +180,13 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem("token", token);
       setToken(token);
-      setUser(usuario);
 
-
-
-      // Configurar Axios para incluir token en futuras peticiones
+      // Configurar Axios para incluir token en futuras peticiones antes de enriquecer
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      const usuarioCompleto = await enriquecerUsuarioDoctor(usuario);
+      setUser(usuarioCompleto);
+
       return { success: true };
 
     } catch (error) {
@@ -322,7 +379,9 @@ export const AuthProvider = ({ children }) => {
       }
 
 
-      setUser(usuario);
+      const usuarioCompleto = await enriquecerUsuarioDoctor(usuario);
+      setUser(usuarioCompleto);
+      return usuarioCompleto;
 
     } catch (error) {
 

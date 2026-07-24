@@ -40,21 +40,6 @@ const DoctorProfile = () => {
     }
   }, [user])
 
-  // Carga especialidad desde el perfil del doctor
-  useEffect(() => {
-    const cargarEspecialidad = async () => {
-      const result = await doctorService.getDoctorProfile()
-      if (result.success) {
-        const especialidad =
-          result.data.data?.especialidad ||
-          result.data.especialidad || ''
-        if (especialidad) {
-          setFormData(prev => ({ ...prev, especialidad }))
-        }
-      }
-    }
-    cargarEspecialidad()
-  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
