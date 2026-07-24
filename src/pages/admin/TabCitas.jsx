@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import Toast from '../../components/common/Toast'
 import EstadoBadge from '../../components/common/EstadoBadge'
 import Button from '../../components/Button'
+import { formatearFechaCita, obtenerFechaLocalCita } from '../../utils/citaFechaUtils'
 
 const TabCitas = () => {
   const { getAdminCitas, getAdminCitaById, reasignarCitas, getAllDoctors, getAdminPacientes } = useAuth()
@@ -133,12 +134,8 @@ const TabCitas = () => {
   const puedeReasignarCita = (cita) => {
     if (!cita || cita.estado !== 'pendiente') return false
 
-    // Extraer solo año, mes y día de la fecha (normalmente viene como ISO string "YYYY-MM-DD...")
-    // para evitar que el ajuste de zona horaria lo mueva al día anterior.
-    const fechaString = typeof cita.fecha === 'string' ? cita.fecha.split('T')[0] : new Date(cita.fecha).toISOString().split('T')[0]
-    const [year, month, day] = fechaString.split('-').map(Number)
-    
-    const fechaCita = new Date(year, month - 1, day)
+    const fechaCita = obtenerFechaLocalCita(cita)
+    if (!fechaCita) return false
     const hoy = new Date()
     
     fechaCita.setHours(0, 0, 0, 0)
@@ -297,7 +294,7 @@ const TabCitas = () => {
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Fecha y Hora</h3>
                   <div className="space-y-2 text-sm">
-                    <p><span className="text-gray-500">Fecha:</span> {new Date(detalleCita.fecha).toLocaleDateString('es-ES')}</p>
+                    <p><span className="text-gray-500">Fecha:</span> {formatearFechaCita(detalleCita, { formato: 'corto' })}</p>
                     <p><span className="text-gray-500">Hora:</span> {detalleCita.horaInicio} - {detalleCita.horaFin}</p>
                     <p><span className="text-gray-500">Duración:</span> {detalleCita.duracion} minutos</p>
                   </div>
@@ -402,7 +399,7 @@ const TabCitas = () => {
                     }
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {new Date(cita.fecha).toLocaleDateString('es-ES')} • {cita.horaInicio || cita.hora} - {cita.horaFin || '---'} • {cita.motivo}
+                    {formatearFechaCita(cita, { formato: 'corto' })} • {cita.horaInicio || cita.hora} - {cita.horaFin || '---'} • {cita.motivo}
                   </p>
                 </div>
               </div>

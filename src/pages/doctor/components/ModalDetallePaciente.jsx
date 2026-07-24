@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Mail, Phone, Calendar, MapPin, User, AlertCircle, Clock, FileText } from 'lucide-react'
+import { formatearFechaCita } from '../../../utils/citaFechaUtils'
 import doctorService from '../../../services/doctorService'
 
 const ESTADO_CITA = {
@@ -218,9 +219,7 @@ const ModalDetallePaciente = ({ pacienteId, onClose }) => {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-800">
-                              {new Date(cita.fecha).toLocaleDateString('es-ES', {
-                                weekday: 'short', day: 'numeric', month: 'short'
-                              })}
+                              {formatearFechaCita(cita, { formato: 'corto-mes' })}
                             </p>
                             <p className="text-xs text-gray-500">
                               {cita.horaInicio} - {cita.horaFin} · {cita.motivo}

@@ -3,21 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, Clock, Search, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import doctorService from '../../../services/doctorService'
 import Button from '../../../components/Button'
-
-const getFechaBaseCitaHelper = (cita) => {
-  const fechaValor = cita?.fecha || cita?.fechaISO
-  if (typeof fechaValor === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaValor)) {
-    const [año, mes, dia] = fechaValor.split('T')[0].split('-').map(Number)
-    return new Date(año, mes - 1, dia)
-  }
-  return new Date(fechaValor || new Date())
-}
-
-const formatearFechaLarga = (cita) => {
-  const fecha = getFechaBaseCitaHelper(cita)
-  const str = fecha.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
+import { obtenerFechaLocalCita, formatearFechaCita } from '../../../utils/citaFechaUtils'
 
 const EstadoBadge = ({ estado }) => {
   const config = {
@@ -47,7 +33,7 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
     onClose()
   }
 
-  const fechaCita = getFechaBaseCitaHelper(cita)
+  const fechaCita = obtenerFechaLocalCita(cita) || new Date()
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   fechaCita.setHours(0, 0, 0, 0)
@@ -78,7 +64,7 @@ const ModalAccion = ({ cita, onClose, onConfirm }) => {
 
         <div className="mb-4 p-3 bg-gray-50 rounded-xl text-sm text-gray-600">
           <p><span className="font-medium">Paciente:</span> {cita.paciente?.nombreCompleto}</p>
-          <p><span className="font-medium">Fecha:</span> {formatearFechaLarga(cita)}</p>
+          <p><span className="font-medium">Fecha:</span> {formatearFechaCita(cita, { formato: 'largo' })}</p>
           <p><span className="font-medium">Hora:</span> {cita.horaFormateada}</p>
         </div>
 
@@ -239,7 +225,7 @@ const TabCitas = ({ onAtender }) => {
   }
 
   const getFechaBaseCita = (cita) => {
-    return getFechaBaseCitaHelper(cita)
+    return obtenerFechaLocalCita(cita) || new Date()
   }
 
   const getFechaHoraCita = (cita, horaFallback = '00:00') => {
@@ -374,7 +360,7 @@ const TabCitas = ({ onAtender }) => {
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                         <span className="flex items-center gap-1">
                           <Calendar size={11} />
-                          {formatearFechaLarga(cita)}
+                          {formatearFechaCita(cita, { formato: 'largo' })}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock size={11} />
