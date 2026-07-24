@@ -18,6 +18,14 @@ import doctorService from '../services/doctorService'
 import api from '../services/api'
 import Button from '../components/Button'
 import Sidebar from '../components/Sidebar'
+import ChangePasswordForm from '../components/ChangePasswordForm'
+import {
+  validarNombrePersonal,
+  validarTelefonoEcuador,
+  validarEspecialidad,
+  normalizarTextoPerfil,
+  tieneErrores
+} from '../utils/profileValidation'
 
 const ProfilePage = () => {
   const { user, updateUser, refreshUserData } = useAuth()
@@ -69,31 +77,19 @@ const ProfilePage = () => {
   }
 
   const validateForm = () => {
-    const newErrors = {}
-    
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es requerido'
-    }
-    
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es requerido'
-    }
-    
-    if (!formData.telefono.trim()) {
-      newErrors.telefono = 'El teléfono es requerido'
-    } else if (!/^\d{10}$/.test(formData.telefono.replace(/\s/g, ''))) {
-      newErrors.telefono = 'El teléfono debe tener 10 dígitos'
+    const newErrors = {
+      nombre: validarNombrePersonal(formData.nombre, 'nombre'),
+      apellido: validarNombrePersonal(formData.apellido, 'apellido'),
+      telefono: validarTelefonoEcuador(formData.telefono)
     }
     
     // Validación específica para doctor
     if (user?.rol === 'doctor') {
-      if (!formData.especialidad.trim()) {
-        newErrors.especialidad = 'La especialidad es requerida'
-      }
+      newErrors.especialidad = validarEspecialidad(formData.especialidad)
     }
     
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return !tieneErrores(newErrors)
   }
 
   const handleSubmit = async (e) => {
@@ -110,20 +106,24 @@ const ProfilePage = () => {
     try {
       let result
       
+      const payloadBase = {
+        nombre: normalizarTextoPerfil(formData.nombre),
+        apellido: normalizarTextoPerfil(formData.apellido),
+        telefono: normalizarTextoPerfil(formData.telefono)
+      }
+      
       // Para doctores, usar la función de sincronización especial
       if (user?.rol === 'doctor') {
         const doctorData = {
-          nombre: formData.nombre,
-          apellido: formData.apellido,
-          telefono: formData.telefono,
-          especialidad: formData.especialidad
+          ...payloadBase,
+          especialidad: normalizarTextoPerfil(formData.especialidad)
         }
         result = await doctorService.updateDoctorProfile(doctorData)
         if (result.success) {
           await refreshUserData()
         }
       } else {
-        const response = await api.put('/api/auth/perfil', formData)
+        const response = await api.put('/api/auth/perfil', payloadBase)
         result = { success: response.data.success }
         
         if (response.data.usuario) {
@@ -335,6 +335,8 @@ const ProfilePage = () => {
                   </Button>
                 </div>
               </form>
+
+              <ChangePasswordForm />
             </div>
           </motion.div>
         </div>

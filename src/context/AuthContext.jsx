@@ -396,21 +396,26 @@ export const AuthProvider = ({ children }) => {
 
 
   const updatePassword = async (passwordData) => {
-  try {
-    const response = await api.put(
-      "/api/auth/actualizar-password",
-      passwordData
-    )
-    return { success: true, data: response.data }
-  } catch (error) {
-    return {
-      success: false,
-      error: error.response?.data?.mensaje || 
-             error.response?.data?.msg || 
-             "Error al actualizar contraseña",
+    try {
+      const response = await api.put(
+        "/api/auth/actualizar-password",
+        passwordData
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      const erroresBackend = error.response?.data?.errores
+      
+      const mensaje = Array.isArray(erroresBackend) && erroresBackend.length > 0
+        ? erroresBackend.join('. ')
+        : (error.response?.data?.mensaje || error.response?.data?.msg || "Error al actualizar contraseña")
+
+      return {
+        success: false,
+        error: mensaje,
+        errors: Array.isArray(erroresBackend) ? erroresBackend : []
+      }
     }
-  }
-};
+  };
 
   const getPendingDoctors = async () => {
 

@@ -4,10 +4,19 @@ import doctorService from '../services/doctorService'
 import Input from './Input'
 import Button from './Button'
 
+import ChangePasswordForm from './ChangePasswordForm'
+import { validarNombrePersonal, validarEspecialidad, normalizarTextoPerfil, tieneErrores } from '../utils/profileValidation'
+
 const DoctorProfile = () => {
-  const { user, updatePassword, refreshUserData } = useAuth()
+  const { user, refreshUserData } = useAuth()
 
   const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    especialidad: ''
+  })
+
+  const [profileErrors, setProfileErrors] = useState({
     nombre: '',
     apellido: '',
     especialidad: ''
@@ -17,17 +26,6 @@ const DoctorProfile = () => {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-
-  // Sección contraseña
-  const [showPasswordSection, setShowPasswordSection] = useState(false)
-  const [passwordData, setPasswordData] = useState({
-    passwordActual: '',
-    passwordNuevo: '',
-    confirmarPassword: ''
-  })
-  const [passwordLoading, setPasswordLoading] = useState(false)
-  const [passwordSuccess, setPasswordSuccess] = useState('')
-  const [passwordError, setPasswordError] = useState('')
 
   // Sincroniza user con form
   useEffect(() => {
@@ -44,20 +42,43 @@ const DoctorProfile = () => {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    setProfileErrors(prev => ({ ...prev, [name]: '' }))
+    setError('')
+    setSuccess('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
+    
     setError('')
     setSuccess('')
+    
+    const nuevosErrores = {
+      nombre: validarNombrePersonal(formData.nombre, 'nombre'),
+      apellido: validarNombrePersonal(formData.apellido, 'apellido'),
+      especialidad: validarEspecialidad(formData.especialidad)
+    }
+    
+    if (tieneErrores(nuevosErrores)) {
+      setProfileErrors(nuevosErrores)
+      return
+    }
+
+    setLoading(true)
 
     try {
-      const result = await doctorService.updateDoctorProfile(formData)
+      const payload = {
+        nombre: normalizarTextoPerfil(formData.nombre),
+        apellido: normalizarTextoPerfil(formData.apellido),
+        especialidad: normalizarTextoPerfil(formData.especialidad)
+      }
+
+      const result = await doctorService.updateDoctorProfile(payload)
       if (result.success) {
         await refreshUserData()
         setSuccess('✅ Perfil actualizado correctamente')
         setIsEditing(false)
+        setProfileErrors({ nombre: '', apellido: '', especialidad: '' })
       } else {
         setError(result.error || 'Error al actualizar perfil')
       }
@@ -71,53 +92,13 @@ const DoctorProfile = () => {
   const handleCancel = () => {
     setIsEditing(false)
     setFormData({
-      nombre: user.nombre || '',
-      apellido: user.apellido || '',
-      especialidad: user.especialidad || ''
+      nombre: user?.nombre || '',
+      apellido: user?.apellido || '',
+      especialidad: user?.especialidad || ''
     })
+    setProfileErrors({ nombre: '', apellido: '', especialidad: '' })
     setError('')
     setSuccess('')
-  }
-
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target
-    setPasswordData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault()
-    setPasswordError('')
-    setPasswordSuccess('')
-
-    if (passwordData.passwordNuevo !== passwordData.confirmarPassword) {
-      setPasswordError('Las contraseñas nuevas no coinciden')
-      return
-    }
-
-    if (passwordData.passwordNuevo.length < 6) {
-      setPasswordError('La contraseña debe tener al menos 6 caracteres, incluir mayúsculas y números')
-      return
-    }
-
-    setPasswordLoading(true)
-    try {
-      const result = await updatePassword({
-        passwordActual: passwordData.passwordActual,
-        passwordNuevo: passwordData.passwordNuevo
-      })
-
-      if (result.success) {
-        setPasswordSuccess('✅ Contraseña actualizada correctamente')
-        setPasswordData({ passwordActual: '', passwordNuevo: '', confirmarPassword: '' })
-        setShowPasswordSection(false)
-      } else {
-        setPasswordError(result.error || 'Error al actualizar contraseña')
-      }
-    } catch (err) {
-      setPasswordError('Error de conexión')
-    } finally {
-      setPasswordLoading(false)
-    }
   }
 
   return (
@@ -134,6 +115,8 @@ const DoctorProfile = () => {
           value={formData.nombre}
           onChange={handleChange}
           disabled={!isEditing}
+          error={profileErrors.nombre}
+          required={isEditing}
         />
 
         <Input
@@ -142,6 +125,8 @@ const DoctorProfile = () => {
           value={formData.apellido}
           onChange={handleChange}
           disabled={!isEditing}
+          error={profileErrors.apellido}
+          required={isEditing}
         />
 
         <Input
@@ -150,6 +135,8 @@ const DoctorProfile = () => {
           value={formData.especialidad}
           onChange={handleChange}
           disabled={!isEditing}
+          error={profileErrors.especialidad}
+          required={isEditing}
         />
 
         <Input
@@ -182,78 +169,7 @@ const DoctorProfile = () => {
         </div>
       </form>
 
-      {/* Sección cambio de contraseña */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Cambiar Contraseña
-          </h3>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setShowPasswordSection(!showPasswordSection)
-              setPasswordData({ passwordActual: '', passwordNuevo: '', confirmarPassword: '' })
-              setPasswordError('')
-              setPasswordSuccess('')
-            }}
-          >
-            {showPasswordSection ? 'Cancelar' : 'Cambiar contraseña'}
-          </Button>
-        </div>
-
-        {passwordSuccess && (
-          <p className="text-green-600 mb-3 text-sm">{passwordSuccess}</p>
-        )}
-
-        {showPasswordSection && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <Input
-              label="Contraseña actual"
-              type="password"
-              name="passwordActual"
-              value={passwordData.passwordActual}
-              onChange={handlePasswordChange}
-              placeholder="Ingresa tu contraseña actual"
-              required
-            />
-
-            <Input
-              label="Nueva contraseña"
-              type="password"
-              name="passwordNuevo"
-              value={passwordData.passwordNuevo}
-              onChange={handlePasswordChange}
-              placeholder="Mínimo 6 caracteres"
-              required
-            />
-
-            <Input
-              label="Confirmar nueva contraseña"
-              type="password"
-              name="confirmarPassword"
-              value={passwordData.confirmarPassword}
-              onChange={handlePasswordChange}
-              placeholder="Repite la nueva contraseña"
-              required
-            />
-
-            {passwordError && (
-              <p className="text-red-600 text-sm">{passwordError}</p>
-            )}
-
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                loading={passwordLoading}
-                disabled={passwordLoading}
-              >
-                Actualizar Contraseña
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
+      <ChangePasswordForm />
     </div>
   )
 }
